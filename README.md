@@ -1,6 +1,6 @@
 # User Stories Skill 🎯
 
-[![GitHub stars](https://img.shields.io/github/stars/felipereisdev/plan-stories-skill?style=social)](https://github.com/felipereisdev/plan-stories-skill)
+[![GitHub stars](https://img.shields.io/github/stars/felipereisdev/user-stories-skill?style=social)](https://github.com/felipereisdev/user-stories-skill)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-compatible-purple)](https://agentskills.io)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-blue)](https://claude.ai)
@@ -27,7 +27,7 @@
 Works with any AI assistant:
 
 ```bash
-git clone https://github.com/felipereisdev/plan-stories-skill.git
+git clone https://github.com/felipereisdev/user-stories-skill.git
 ```
 
 Then configure your AI assistant to load skills from the cloned directory.
