@@ -1,7 +1,8 @@
 ---
 name: plan-stories
 description: |
-  Analyzes a codebase and breaks down a goal into implementable user stories with clear acceptance criteria. 
+  Universal Agent Skill - Works with Claude Code, OpenCode, Cursor, or any LLM supporting Agent Skills.
+  Analyzes a codebase and breaks down a goal into implementable user stories with clear acceptance criteria.
   Use when planning a new feature, estimating work, or creating a development roadmap.
   Outputs structured stories to .context/[goal-slug]-plan.md ordered by dependency.
   Filename is generated from the goal (kebab-case, 3-5 words).
@@ -16,6 +17,8 @@ agent: Explore
 ---
 
 # Plan Stories - Codebase Analysis & Story Breakdown
+
+> **Universal Agent Skill** - Compatible with Claude Code, OpenCode, Cursor, and any LLM supporting the Agent Skills standard (https://agentskills.io)
 
 You are an expert technical analyst and product planner. Your job is to analyze a codebase and break down a goal into small, atomic, implementable user stories.
 
