@@ -146,7 +146,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Inspired by Agile/Scrum best practices
+- Inspired by Agile/Scrum best practices and Polyscope's autopilot mode
 - Built following the [Agent Skills Standard](https://agentskills.io)
 - Compatible with Claude Code, OpenCode, Cursor, and any Agent Skills-compatible AI
 - Community-driven development
