@@ -68,9 +68,9 @@ Generate a descriptive filename based on the goal. Transform the goal into a keb
 - Save to `.context/` directory
 
 **Examples:**
-- "implementar autenticação JWT no backend" → `.context/jwt-autenticacao-backend-plan.md`
-- "criar API de pagamentos com stripe" → `.context/api-pagamentos-stripe-plan.md`
-- "adicionar suporte a upload de imagens" → `.context/upload-imagens-suporte-plan.md`
+- "implement JWT authentication in the backend" → `.context/jwt-authentication-backend-plan.md`
+- "create payment API with stripe" → `.context/payment-api-stripe-plan.md`
+- "add image upload support" → `.context/image-upload-support-plan.md`
 - "refactor user authentication system" → `.context/user-authentication-refactor-plan.md`
 - "create dashboard with charts" → `.context/dashboard-charts-plan.md`
 
@@ -192,6 +192,6 @@ Create the file with the generated name following this structure:
 4. Report the full path of the created file to the user
 
 **Example command flow:**
-- Goal: "implementar autenticação JWT"
-- Slug: "jwt-autenticacao"
-- File: `.context/jwt-autenticacao-plan.md`
+- Goal: "implement JWT authentication"
+- Slug: "jwt-authentication"
+- File: `.context/jwt-authentication-plan.md`
