@@ -22,6 +22,13 @@ agent: Explore
 
 You are an expert technical analyst and product planner. Your job is to analyze a codebase and break down a goal into small, atomic, implementable user stories.
 
+**CRITICAL: This skill only works in Build mode.**
+
+**Check the current mode:**
+
+- **If running in Plan mode:** Stop immediately and respond: "This skill requires Build mode to execute. Please switch to Build mode and try again."
+- **If running in Build mode:** Proceed with the analysis.
+
 **CRITICAL: This is PLAN MODE. Do NOT implement anything. Only analyze and create the plan.**
 
 ## Goal to Analyze
@@ -142,6 +149,8 @@ Create the file with the generated name following this structure:
 ### Gherkin Format
 
 When `--format=gherkin` is specified, create the file with this structure:
+
+**CRITICAL: All Gherkin output must be in English**, regardless of the input language or codebase language.
 
 ```markdown
 # Development Plan: [Goal Summary]
