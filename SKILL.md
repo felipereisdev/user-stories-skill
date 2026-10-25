@@ -204,6 +204,52 @@ See [example-output.md](example-output.md) for a complete JSON example.
 
 ## Gherkin Format
 
-When `--format=gherkin` is specified, output Feature/Scenario blocks instead of JSON. Each user story becomes a Feature with Scenarios for each acceptance criterion. Include metadata comments (`# Complexity`, `# Dependencies`, `# Files`) above each Feature block. All Gherkin output must be in English regardless of input language. Keep every other section of the template (Context Summary, Clarifications, Assumptions, Open Questions, Implementation Notes, Definition of Done).
+When `--format=gherkin` is specified, output Feature/Scenario blocks instead of JSON. Each user story becomes a Feature with a Scenario for each acceptance criterion; the [Schema v2 fields](#schema-v2-fields) rules and the [Schema v2 checklist](#schema-v2-checklist) apply unchanged. All Gherkin output must be in English regardless of input language. Keep every other section of the template (Context Summary, Clarifications, Assumptions, Open Questions, Implementation Notes, Definition of Done), and start the plan header with `**Format**: Gherkin (BDD)` followed by `**Schema**: v2`.
+
+Mapping:
+
+- Put each Feature in its own ` ```gherkin ` fenced block, under a `### Feature N: [title]` heading.
+- Above the `Feature:` line, write one comment line per field, in this order and with these exact labels: `# ID:`, `# Type:`, `# Independent Test:`, `# Priority:`, `# Complexity:`, `# Dependencies:`, `# Consumes:`, `# Produces:`, `# Files:`, `# Leverage:`, `# Parallel:`, `# Conflicts With:`, `# Source:`, `# Status:`, `# Passes:`, `# Notes:`. The `Feature:` line comes right after `# Notes:`, with no blank line between them.
+- An empty list or empty note is written `none`.
+- `# Dependencies:` is `US-001 (reason)` items separated by `; `. `# Consumes:` and `# Produces:` separate items with `; `. `# Files:` (the `filesToTouch`), `# Leverage:` and `# Conflicts With:` separate items with `, `.
+- `title` becomes the `Feature:` line, and `description` the As a / I want / So that lines.
+- Each `Scenario:` is one criterion. The line right above it is its kind tag, `@happy`, `@edge` or `@error`, and the line above the tag is `# Verify: <check>`.
+
+```gherkin
+# ID: US-002
+# Type: feature
+# Independent Test: POST /api/items creates an item and returns 201
+# Priority: 2
+# Complexity: S
+# Dependencies: US-001 (needs the Item model)
+# Consumes: Item.create()
+# Produces: POST /api/items
+# Files: src/routes/items.ts, src/controllers/ItemController.ts
+# Leverage: src/validators/base.validator.ts
+# Parallel: true
+# Conflicts With: none
+# Source: explicit
+# Status: todo
+# Passes: false
+# Notes: none
+Feature: User creates an item
+  As a user
+  I want to create an item
+  So that I can track it later
+
+  # Verify: npm test -- items.create
+  @happy
+  Scenario: Valid payload creates the item
+    Given I am a user
+    When I send POST /api/items with a valid name
+    Then I receive 201 with the created item
+
+  # Verify: npm test -- items.create
+  @error
+  Scenario: Missing name is rejected
+    Given I am a user
+    When I send POST /api/items without a name
+    Then I receive 400 with a message about the name
+```
 
 See [example-gherkin-output.md](example-gherkin-output.md) for the complete template and a six-feature example.
