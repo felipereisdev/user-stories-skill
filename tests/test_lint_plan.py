@@ -543,5 +543,37 @@ class FileRuleTests(unittest.TestCase):
         self.assertNotIn("Traceback", r.stderr)
 
 
+class ReviewRegressionTests(unittest.TestCase):
+    def test_lone_surrogate_never_tracebacks(self):
+        text = json_plan(lambda s: s[0].update(type="\ud800"))
+        r = run_cli("--skip-files", write_temp(self, text))
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    @unittest.skipIf(os.name != "posix" or os.geteuid() == 0, "needs a non-root POSIX user")
+    def test_disk_error_keeps_the_other_problems(self):
+        d = tempfile.TemporaryDirectory()
+        self.addCleanup(d.cleanup)
+        root = Path(d.name)
+        for x in ("src/config", "src/validators", "prisma", "locked"):
+            (root / x).mkdir(parents=True)
+        (root / "src/config/database.ts").write_text("")
+        (root / "src/validators/base.validator.ts").write_text("")
+        (root / "locked").chmod(0)
+        self.addCleanup((root / "locked").chmod, 0o755)
+        text = json_plan(lambda s: (s[0]["filesToTouch"].append("locked/inner/x.py"), s[1].update(type="nope")))
+        probs = lint_text(text, root=root)
+        self.assertIn("field-type", rules(probs))
+
+    def test_story_without_id_does_not_shift_lines(self):
+        text = json_plan(lambda s: (s[1].pop("id"), s[3].update(type="nope")))
+        p = [p for p in lint_text(text) if p.rule == "field-type" and p.story == "US-004"][0]
+        self.assertEqual(p.line, line_containing(text, '    "id": "US-004"'))
+
+    def test_gherkin_non_ascii_digit_priority(self):
+        text = gherkin(self, "# Priority: 6\n", "# Priority: \u00b2\n")
+        self.assertIn("'priority' must be an integer, got '\u00b2'", messages(lint_text(text), "field-type"))
+
+
 if __name__ == "__main__":
     unittest.main()

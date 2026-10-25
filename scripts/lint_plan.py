@@ -115,6 +115,14 @@ def is_int(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _exists(path: Path, directory: bool = False) -> bool:
+    """exists()/is_dir() that treats an OS error (permission, name too long) as present: no false positive."""
+    try:
+        return path.is_dir() if directory else path.exists()
+    except OSError:
+        return True
+
+
 def is_glob(path: str) -> bool:
     return any(c in path for c in "*?[")
 
@@ -172,18 +180,46 @@ def _parse_json_plan(blocks) -> Plan:
     if not stories:
         plan.problems.append(Problem(opening, "plan", "stories-block", "the stories array is empty"))
         return plan
-    id_lines = []
-    indent = None
-    for n, line in enumerate(content):
-        m = JSON_ID_RE.match(line)
-        if m:
-            if indent is None:
-                indent = m.group(1)
-            if m.group(1) == indent:
-                id_lines.append(opening + 1 + n)
+    ranges = _object_ranges(content)
     for k, data in enumerate(stories):
-        plan.stories.append(Story(data, id_lines[k] if k < len(id_lines) else opening))
+        line = opening
+        if k < len(ranges):
+            first, last = ranges[k]
+            line = opening + 1 + first
+            matches = [(len(m.group(1)), n) for n in range(first, last + 1)
+                       for m in [JSON_ID_RE.match(content[n])] if m]
+            if matches:
+                line = opening + 1 + min(matches)[1]
+        plan.stories.append(Story(data, line))
     return plan
+
+
+def _object_ranges(content: List[str]) -> List[Tuple[int, int]]:
+    """(first, last) content-line index of each object directly inside the top-level array."""
+    ranges = []
+    depth = 0
+    in_string = escaped = False
+    start = 0
+    for n, line in enumerate(content):
+        for ch in line:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+            elif ch == '"':
+                in_string = True
+            elif ch in "[{":
+                depth += 1
+                if depth == 2 and ch == "{":
+                    start = n
+            elif ch in "]}":
+                if depth == 2 and ch == "}":
+                    ranges.append((start, n))
+                depth -= 1
+    return ranges
 
 
 def _parse_gherkin_plan(blocks) -> Plan:
@@ -291,7 +327,7 @@ def parse_gherkin_feature(lines: List[str], first_line: int) -> Tuple[Optional[S
         "description": " ".join(desc),
         "independentTest": values["Independent Test"],
         "acceptanceCriteria": criteria,
-        "priority": int(priority) if priority.isdigit() else priority,
+        "priority": int(priority) if re.fullmatch(r"[0-9]+", priority) else priority,
         "complexity": values["Complexity"],
         "dependencies": dependencies,
         "interfaces": {"consumes": _split(values["Consumes"], ";"), "produces": _split(values["Produces"], ";")},
@@ -587,14 +623,14 @@ def check_files(plan: Plan, root: Optional[Path]) -> List[Problem]:
                 if root is None or not parts:
                     continue
                 target = p.split("#", 1)[0] if name == "leverage" else p
-                if (root / target).exists() or (is_glob(target) and glob.glob(str(root / target))):
+                if _exists(root / target) or (is_glob(target) and glob.glob(glob.escape(str(root)) + "/" + target)):
                     continue
                 if name == "leverage":
                     problems.append(Problem(line, st.sid, "leverage-missing",
                                             f"leverage path '{target}' does not exist under {root}"))
                     continue
                 top = parts[0]
-                if len(parts) == 1 or is_glob(top) or (root / top).is_dir():
+                if len(parts) == 1 or is_glob(top) or _exists(root / top, directory=True):
                     continue
                 problems.append(Problem(line, st.sid, "file-unanchored",
                                         f"filesToTouch path '{p}' does not exist and neither does its "
@@ -636,6 +672,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             sys.stderr.write(f"lint_plan: --root {args.root} is not a directory\n")
             return 2
 
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="backslashreplace")
+        except (AttributeError, ValueError):
+            pass
     code = 0
     for path in args.plans:
         try:
