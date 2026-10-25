@@ -284,8 +284,8 @@ Feature: Create login endpoint
   Scenario: Reject login for non-existent user
     Given no user exists with the provided email
     When I submit a POST request to /api/auth/login
-    Then I should receive a 404 status code
-    And the error message should be generic for security
+    Then I should receive a 401 status code
+    And the error message should be the generic 'Invalid credentials'
 
   # Verify: npm test -- auth.login
   @error
@@ -449,8 +449,8 @@ Feature: Create user profile endpoint
 
 ## How to Use This Plan
 
-1. **Pick** the next story whose `status` is `todo` and whose dependencies are all `done`; stories with `parallel: true` can run at the same time
-2. **Verify** by running the `verify` check of each scenario; when all of them pass, set `passes: true` and `status: "done"
+1. **Pick** the next story whose `status` is `todo` and whose dependencies are all `done`; stories with `# Parallel: true` can run at the same time
+2. **Verify** by running the `verify` check of each scenario; when all of them pass, set `# Passes: true` and `# Status: done`
 3. **Check** boxes in Definition of Done as you progress
 4. **Update** this file if you find new dependencies or requirements during implementation
 

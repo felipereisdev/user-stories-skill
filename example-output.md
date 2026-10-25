@@ -156,7 +156,7 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
     "independentTest": "POST /api/auth/login with a registered user's credentials returns 200 and a token that verifyToken accepts",
     "acceptanceCriteria": [
       {"kind": "happy", "text": "POST /api/auth/login with valid credentials returns 200 with a JWT (userId in payload) and basic user data", "verify": "npm test -- auth.login"},
-      {"kind": "error", "text": "Unknown email returns 404 with a generic message", "verify": "npm test -- auth.login"},
+      {"kind": "error", "text": "Unknown email returns 401 with the same generic message 'Invalid credentials'", "verify": "npm test -- auth.login"},
       {"kind": "error", "text": "Wrong password returns 401 with the generic message 'Invalid credentials'", "verify": "npm test -- auth.login"},
       {"kind": "happy", "text": "Password is compared with bcrypt.compare", "verify": "npm test -- auth.login"}
     ],
@@ -293,6 +293,6 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
 ## How to Use This Plan
 
 1. **Pick** the next story whose `status` is `todo` and whose dependencies are all `done`; stories with `parallel: true` can run at the same time
-2. **Verify** by running the `verify` check of each acceptance criterion; when all of them pass, set `passes: true` and `status: "done"
+2. **Verify** by running the `verify` check of each acceptance criterion; when all of them pass, set `"passes": true` and `"status": "done"`
 3. **Check** boxes in Definition of Done as you progress
 4. **Update** this file if you find new dependencies or requirements during implementation

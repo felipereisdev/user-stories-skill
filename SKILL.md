@@ -28,7 +28,7 @@ Otherwise, extract the goal, the optional format flag (`--format=json` default, 
 5. **Estimate** complexity per story: XS (<1h, single file), S (1–2h), M (2–4h), L (4–8h), XL (break it down further)
 6. **Derive** `conflictsWith` and `parallel` after the stories are final: compare the `filesToTouch` of every pair of stories; when two share a path, list each in the other's `conflictsWith`; set `parallel` to `true` only when `conflictsWith` is `[]` (see [Schema v2 fields](#schema-v2-fields)). Derive again if any `filesToTouch` changes
 7. **Generate filename** from the goal (see [naming rules](#output-file-naming))
-8. **Write** the plan to `.context/[slug]-plan.md` using JSON or Gherkin format, with `"status": "todo"` and `"passes": false` on every story
+8. **Write** the plan to `.context/[slug]-plan.md` using JSON or Gherkin format, with `status` `todo` and `passes` `false` on every story
 9. **Verify** the plan against the [Schema v2 checklist](#schema-v2-checklist), and that it lists its assumptions and open questions
 
 ### Error Recovery
@@ -172,7 +172,7 @@ Every story has these 18 fields, in this order. The rules apply to the JSON and 
 | `verify` | string | A command that checks the criterion with the project's own tools (the test script found in `package.json`, `Makefile`, `pyproject.toml` etc., a CLI, an HTTP call), or `manual: <steps>` when no command can. Never a tool the project does not have; a test file the story itself creates is allowed. You write it; you never run it |
 | `priority` | integer | 1..N, each once, in execution order |
 | `complexity` | `XS` \| `S` \| `M` \| `L` | An `XL` story is broken down |
-| `dependencies` | array of `{id, reason}` | `id` of an earlier story (lower priority) in this plan; `reason` says what this story needs from it; `[]` when none |
+| `dependencies` | array of `{id, reason}` | `id` of an earlier story in this plan (a smaller `priority` number); `reason` says what this story needs from it; `[]` when none |
 | `interfaces` | `{consumes: [string], produces: [string]}` | Concrete contracts: function or method signature, endpoint (`POST /api/x`), event, table, environment variable, command. Each `consumes` item is produced by a story in `dependencies` or already exists in the code |
 | `filesToTouch` | array of string | Real paths the story creates or changes; `[]` only for a `spike` |
 | `leverage` | array of string | Existing files (or `path#symbol`) to reuse; you read each one while exploring; `[]` when nothing applies |
@@ -190,7 +190,7 @@ Before you finish, check every story:
 - [ ] All 18 fields are present, in the order of [Schema v2 fields](#schema-v2-fields)
 - [ ] Each criterion has `kind`, `text` and `verify`; there is at least one `happy`; each `feature` and `bug` has an `edge` or `error`
 - [ ] `priority` runs 1..N with no repeats
-- [ ] Each dependency points to a story with a lower priority and has a `reason`
+- [ ] Each dependency points to an earlier story (a smaller `priority` number) and has a `reason`
 - [ ] Each `consumes` item is produced by a dependency or exists in the code
 - [ ] Each `leverage` path exists (you read it)
 - [ ] `filesToTouch` is empty only in a `spike`, and a `spike` is at most `M`
