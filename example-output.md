@@ -16,6 +16,16 @@ For the goal **"implement JWT authentication"**, the generated file would be:
 
 Node.js/Express project with TypeScript. Current stack includes PostgreSQL via Prisma ORM. Structure follows MVC pattern with controllers in `/src/controllers`, models in `/src/models`, and middlewares in `/src/middlewares`. Database configuration exists in `/src/config/database.ts`. Project uses `bcryptjs` for password hashing (already installed).
 
+## Assumptions
+
+- Registration and login use email and password only; social login is out of scope — the goal names login and registration, and no OAuth library is installed.
+- Tokens are stateless JWTs signed with `JWT_SECRET`; refresh tokens are left for a later iteration — matches the notes of US-003.
+- Passwords are hashed with `bcryptjs`, already installed in the project.
+
+## Open Questions
+
+- Should tokens be revocable on logout (a token denylist)? — affects US-005; assumed for now: no, tokens simply expire.
+
 ## User Stories
 
 ```json
