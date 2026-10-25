@@ -11,11 +11,12 @@ For the goal **"implement JWT authentication"** with `--format=gherkin`, the gen
 
 **Generated**: 2026-03-11T11:30:00Z  
 **Goal**: implement JWT authentication with user login and registration  
-**Format**: Gherkin (BDD)
+**Format**: Gherkin (BDD)  
+**Schema**: v2
 
 ## Context Summary
 
-Node.js/Express project with TypeScript. Current stack includes PostgreSQL via Prisma ORM. Structure follows MVC pattern with controllers in `/src/controllers`, models in `/src/models`, and middlewares in `/src/middlewares`. Database configuration exists in `/src/config/database.ts`. Project uses `bcryptjs` for password hashing (already installed).
+Node.js/Express project with TypeScript. Current stack includes PostgreSQL via Prisma ORM. Structure follows MVC pattern with controllers in `/src/controllers`, models in `/src/models`, and middlewares in `/src/middlewares`. Database configuration exists in `/src/config/database.ts`. Project uses `bcryptjs` for password hashing (already installed). Tests run with Jest via `npm test`. A base validator exists at `src/validators/base.validator.ts`, which new validators extend.
 
 ## Assumptions
 
@@ -31,60 +32,99 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
 
 ### Feature 1: Create User model and database schema
 
+```gherkin
+# ID: US-001
+# Type: enabler
+# Independent Test: The migration applies and User.create() stores a user with a hashed password
+# Priority: 1
 # Complexity: S
-# Dependencies: []
+# Dependencies: none
+# Consumes: none
+# Produces: User.create(); User.findByEmail(); User.findById()
 # Files: prisma/schema.prisma, src/models/User.ts, prisma/migrations/*/migration.sql
-
+# Leverage: src/config/database.ts
+# Parallel: true
+# Conflicts With: none
+# Source: inferred
+# Status: todo
+# Passes: false
+# Notes: Use UUID for ID. Follow existing model patterns in the project. Use password_hash field, never plain text password.
 Feature: Create User model and database schema
   As a developer
   I want a user model with authentication fields
   So that I can securely store login data
 
+  # Verify: npx prisma validate
+  @happy
   Scenario: Prisma schema has all required fields
     Given the Prisma configuration exists
     When I define the User model in schema.prisma
     Then it should have fields: id (UUID), email (unique), password_hash, name, created_at, updated_at
 
+  # Verify: npx prisma migrate status
+  @happy
   Scenario: Database migration is created and applied
     Given the User model is defined in the schema
     When I run prisma migrate dev
     Then a migration SQL file should be generated
     And the migration should be applied successfully to the database
 
+  # Verify: npm test -- user.model
+  @happy
   Scenario: TypeScript model is created
     Given the Prisma schema is defined
     When I generate the TypeScript types
     Then User.ts should be created in /src/models
     And it should include instance methods for the model
 
+  # Verify: npm test -- user.model
+  @error
   Scenario: Email validation is implemented
     Given the User model exists
     When I attempt to save a user with invalid email
     Then validation should fail with appropriate error message
 
+  # Verify: npm test -- user.model
+  @happy
   Scenario: Password is stored as hash
     Given the User model exists
     When I create a user with a plain text password
     Then bcryptjs should hash the password before saving
     And the database should only store the password_hash
+```
 
 ---
 
-### Feature 2: Create user registration endpoint
+### Feature 2: User registers with email and password
 
+```gherkin
+# ID: US-002
+# Type: feature
+# Independent Test: POST /api/auth/register creates a user and returns 201
+# Priority: 2
 # Complexity: M
-# Dependencies: [US-001]
+# Dependencies: US-001 (needs User model)
+# Consumes: User.create()
+# Produces: POST /api/auth/register
 # Files: src/controllers/AuthController.ts, src/routes/auth.routes.ts, src/validators/auth.validator.ts
-
-Feature: Create user registration endpoint
-  As a user
-  I want to register with email and password
-  So that I can access the application
+# Leverage: src/validators/base.validator.ts
+# Parallel: false
+# Conflicts With: US-004
+# Source: explicit
+# Status: todo
+# Passes: false
+# Notes: Use `express-validator` library for validation (already installed). Follow existing JSON response pattern in the application.
+Feature: User registers with email and password
+  As a visitor
+  I want to register
+  So that I can access the app
 
   Background:
     Given the User model exists in the database
     And express-validator is installed
 
+  # Verify: npm test -- auth.register
+  @happy
   Scenario: Successfully register with valid data
     Given I provide a valid email format
     And I provide a password with at least 8 characters
@@ -94,48 +134,74 @@ Feature: Create user registration endpoint
     And my password should be hashed in the database
     And the response should not include password_hash
 
+  # Verify: npm test -- auth.register
+  @error
   Scenario: Reject registration with invalid email
     Given I provide an invalid email format
     When I submit a POST request to /api/auth/register
     Then I should receive a 400 status code
     And I should see an error message about invalid email
 
+  # Verify: npm test -- auth.register
+  @error
   Scenario: Reject registration with weak password
     Given I provide a password with less than 8 characters
     When I submit a POST request to /api/auth/register
     Then I should receive a 400 status code
     And I should see an error message about password length
 
+  # Verify: npm test -- auth.register
+  @edge
   Scenario: Reject registration with duplicate email
     Given a user with my email already exists
     When I submit a POST request to /api/auth/register
     Then I should receive a 409 status code
     And I should see an error message about email already in use
 
+  # Verify: npm test -- auth.register
+  @error
   Scenario: Reject registration with empty name
     Given I provide an empty name field
     When I submit a POST request to /api/auth/register
     Then I should receive a 400 status code
     And I should see an error message about name being required
+```
 
 ---
 
 ### Feature 3: Configure JWT and create utilities
 
+```gherkin
+# ID: US-003
+# Type: enabler
+# Independent Test: generateToken(userId) returns a token that verifyToken(token) decodes back to the same userId
+# Priority: 3
 # Complexity: S
-# Dependencies: []
+# Dependencies: none
+# Consumes: none
+# Produces: generateToken(userId); verifyToken(token)
 # Files: src/utils/jwt.ts, src/types/auth.d.ts, .env.example
-
+# Leverage: none
+# Parallel: true
+# Conflicts With: none
+# Source: inferred
+# Status: todo
+# Passes: false
+# Notes: Add JWT_SECRET to .env.example. Consider refresh tokens in future iteration if needed.
 Feature: Configure JWT and create utilities
   As a developer
   I want utilities to generate and verify JWT tokens
   So that I can implement stateless authentication
 
+  # Verify: npm ls jsonwebtoken
+  @happy
   Scenario: jsonwebtoken package is installed
     Given the project has package.json
     When I install jsonwebtoken
     Then the package should be added to dependencies
 
+  # Verify: npm test -- jwt
+  @happy
   Scenario: Generate token function works
     Given a valid user ID
     When I call generateToken(userId)
@@ -143,36 +209,58 @@ Feature: Configure JWT and create utilities
     And the token should have 24h expiration
     And the token should include userId in payload
 
+  # Verify: npm test -- jwt
+  @happy
   Scenario: Verify token function works
     Given a valid JWT token
     When I call verifyToken(token)
     Then it should return the decoded payload
     And the payload should include userId
 
+  # Verify: npm test -- jwt
+  @error
   Scenario: Reject invalid token
     Given an expired or malformed token
     When I call verifyToken(token)
     Then it should return null
 
+  # Verify: npm test -- jwt
+  @happy
   Scenario: Secret key is loaded from environment
     Given JWT_SECRET is defined in .env
     When the application starts
     Then the secret should be loaded from process.env.JWT_SECRET
 
+  # Verify: npx tsc --noEmit
+  @happy
   Scenario: TypeScript types are defined
     Given the jwt.ts utility exists
     When I check src/types/auth.d.ts
     Then JWT payload types should be defined
     And they should include userId and expiration
+```
 
 ---
 
 ### Feature 4: Create login endpoint
 
+```gherkin
+# ID: US-004
+# Type: feature
+# Independent Test: POST /api/auth/login with a registered user's credentials returns 200 and a token that verifyToken accepts
+# Priority: 4
 # Complexity: M
-# Dependencies: [US-001, US-003]
+# Dependencies: US-001 (needs User.findByEmail() to look up the user); US-003 (needs generateToken() to issue the token)
+# Consumes: User.findByEmail(); generateToken(userId)
+# Produces: POST /api/auth/login
 # Files: src/controllers/AuthController.ts, src/routes/auth.routes.ts
-
+# Leverage: none
+# Parallel: false
+# Conflicts With: US-002
+# Source: explicit
+# Status: todo
+# Passes: false
+# Notes: Don't reveal if email exists or password is wrong (generic message: 'Invalid credentials'). Rate limiting will be implemented in future story.
 Feature: Create login endpoint
   As a user
   I want to login with email and password
@@ -182,6 +270,8 @@ Feature: Create login endpoint
     Given the User model exists
     And JWT utilities are configured
 
+  # Verify: npm test -- auth.login
+  @happy
   Scenario: Successfully login with valid credentials
     Given a registered user exists in the database
     When I submit a POST request to /api/auth/login with correct email and password
@@ -189,47 +279,73 @@ Feature: Create login endpoint
     And I should receive a valid JWT token
     And the response should include basic user data (id, email, name)
 
+  # Verify: npm test -- auth.login
+  @error
   Scenario: Reject login for non-existent user
     Given no user exists with the provided email
     When I submit a POST request to /api/auth/login
-    Then I should receive a 404 status code
-    And the error message should be generic for security
+    Then I should receive a 401 status code
+    And the error message should be the generic 'Invalid credentials'
 
+  # Verify: npm test -- auth.login
+  @error
   Scenario: Reject login with wrong password
     Given a user exists with the provided email
     When I submit a POST request with an incorrect password
     Then I should receive a 401 status code
     And the error message should be generic (not reveal if email exists)
 
+  # Verify: npm test -- auth.login
+  @happy
   Scenario: Password comparison uses bcrypt
     Given a user with a hashed password
     When I submit login credentials
     Then bcrypt.compare should be used to verify the password
+```
 
 ---
 
 ### Feature 5: Create authentication middleware
 
+```gherkin
+# ID: US-005
+# Type: enabler
+# Independent Test: A test route behind authMiddleware returns 200 with a valid Bearer token and 401 without one
+# Priority: 5
 # Complexity: M
-# Dependencies: [US-003]
+# Dependencies: US-001 (needs User.findById() to load the user); US-003 (needs verifyToken() to check the token)
+# Consumes: verifyToken(token); User.findById()
+# Produces: authMiddleware; req.user
 # Files: src/middlewares/auth.ts, src/types/express.d.ts
-
+# Leverage: none
+# Parallel: true
+# Conflicts With: none
+# Source: inferred
+# Status: todo
+# Passes: false
+# Notes: Extend Express namespace to add user to Request. Middleware should be reusable in any route.
 Feature: Create authentication middleware
   As a developer
   I want middleware to protect private routes
   So that only authenticated users can access them
 
+  # Verify: npm test -- auth.middleware
+  @happy
   Scenario: Extract token from Authorization header
     Given a request with Authorization: Bearer <token>
     When authMiddleware is executed
     Then it should extract the token from the header
 
+  # Verify: npm test -- auth.middleware
+  @error
   Scenario: Reject request without token
     Given a request without Authorization header
     When authMiddleware is executed
     Then it should return 401 Unauthorized
     And the response should indicate token is missing
 
+  # Verify: npm test -- auth.middleware
+  @happy
   Scenario: Verify valid JWT token
     Given a request with a valid JWT token
     When authMiddleware is executed
@@ -237,31 +353,51 @@ Feature: Create authentication middleware
     And it should fetch the user from the database
     And it should attach user to req.user
 
+  # Verify: npm test -- auth.middleware
+  @error
   Scenario: Reject expired token
     Given a request with an expired JWT token
     When authMiddleware is executed
     Then it should return 401 Unauthorized
     And the response should indicate token is invalid or expired
 
+  # Verify: npm test -- auth.middleware
+  @edge
   Scenario: Reject token with non-existent user
     Given a valid token for a deleted user
     When authMiddleware is executed
     Then it should return 404 Not Found
     And the response should indicate user not found
 
+  # Verify: npx tsc --noEmit
+  @happy
   Scenario: Request type is extended
     Given the authMiddleware is implemented
     When I check src/types/express.d.ts
     Then the Request type should be extended to include user property
+```
 
 ---
 
 ### Feature 6: Create user profile endpoint
 
+```gherkin
+# ID: US-006
+# Type: feature
+# Independent Test: GET /api/users/me with a valid token returns 200 with the user's id, email, name and created_at
+# Priority: 6
 # Complexity: XS
-# Dependencies: [US-005]
+# Dependencies: US-005 (needs authMiddleware to populate req.user)
+# Consumes: authMiddleware; req.user
+# Produces: GET /api/users/me
 # Files: src/controllers/UserController.ts, src/routes/user.routes.ts
-
+# Leverage: none
+# Parallel: true
+# Conflicts With: none
+# Source: inferred
+# Status: todo
+# Passes: false
+# Notes: Simple route to validate that authentication middleware is working. Use req.user populated by middleware.
 Feature: Create user profile endpoint
   As an authenticated user
   I want to view my profile data
@@ -271,6 +407,8 @@ Feature: Create user profile endpoint
     Given the authMiddleware is working
     And the user is authenticated
 
+  # Verify: npm test -- users.me
+  @happy
   Scenario: View own profile
     Given I am an authenticated user
     When I send GET request to /api/users/me
@@ -278,10 +416,13 @@ Feature: Create user profile endpoint
     And I should receive my profile data: id, email, name, created_at
     And the response should NOT include password_hash
 
+  # Verify: npm test -- users.me
+  @error
   Scenario: Reject unauthenticated request
     Given I am not authenticated
     When I send GET request to /api/users/me
     Then I should receive 401 Unauthorized
+```
 
 ---
 
@@ -308,8 +449,8 @@ Feature: Create user profile endpoint
 
 ## How to Use This Plan
 
-1. **Implement** following priority order (Feature 1 → Feature 6)
-2. **Verify** scenarios before considering each feature done
+1. **Pick** the next story whose `status` is `todo` and whose dependencies are all `done`; stories with `# Parallel: true` can run at the same time
+2. **Verify** by running the `verify` check of each scenario; when all of them pass, set `# Passes: true` and `# Status: done`
 3. **Check** boxes in Definition of Done as you progress
 4. **Update** this file if you find new dependencies or requirements during implementation
 

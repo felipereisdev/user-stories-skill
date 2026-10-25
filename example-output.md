@@ -10,11 +10,12 @@ For the goal **"implement JWT authentication"**, the generated file would be:
 # Development Plan: Implement JWT Authentication System
 
 **Generated**: 2026-03-11T11:30:00Z  
-**Goal**: implement JWT authentication with user login and registration
+**Goal**: implement JWT authentication with user login and registration  
+**Schema**: v2
 
 ## Context Summary
 
-Node.js/Express project with TypeScript. Current stack includes PostgreSQL via Prisma ORM. Structure follows MVC pattern with controllers in `/src/controllers`, models in `/src/models`, and middlewares in `/src/middlewares`. Database configuration exists in `/src/config/database.ts`. Project uses `bcryptjs` for password hashing (already installed).
+Node.js/Express project with TypeScript. Current stack includes PostgreSQL via Prisma ORM. Structure follows MVC pattern with controllers in `/src/controllers`, models in `/src/models`, and middlewares in `/src/middlewares`. Database configuration exists in `/src/config/database.ts`. Project uses `bcryptjs` for password hashing (already installed). Tests run with Jest via `npm test`. A base validator exists at `src/validators/base.validator.ts`, which new validators extend.
 
 ## Assumptions
 
@@ -32,130 +33,237 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
 [
   {
     "id": "US-001",
+    "type": "enabler",
     "title": "Create User model and database schema",
     "description": "As a developer, I want a user model with authentication fields to securely store login data.",
+    "independentTest": "The migration applies and User.create() stores a user with a hashed password",
     "acceptanceCriteria": [
-      "Prisma schema created with fields: id (UUID), email (unique), password_hash, name, created_at, updated_at",
-      "Migration generated and applied successfully",
-      "TypeScript model created at /src/models/User.ts with instance methods",
-      "Email validation implemented (valid format)",
-      "Password stored as hash (bcryptjs)"
+      {"kind": "happy", "text": "Prisma schema created with fields: id (UUID), email (unique), password_hash, name, created_at, updated_at", "verify": "npx prisma validate"},
+      {"kind": "happy", "text": "Migration generated and applied successfully", "verify": "npx prisma migrate status"},
+      {"kind": "happy", "text": "TypeScript model created at /src/models/User.ts with instance methods", "verify": "npm test -- user.model"},
+      {"kind": "error", "text": "Saving a user with an invalid email format fails validation", "verify": "npm test -- user.model"},
+      {"kind": "happy", "text": "Password stored as hash (bcryptjs)", "verify": "npm test -- user.model"}
     ],
     "priority": 1,
     "complexity": "S",
     "dependencies": [],
+    "interfaces": {
+      "consumes": [],
+      "produces": [
+        "User.create()",
+        "User.findByEmail()",
+        "User.findById()"
+      ]
+    },
     "filesToTouch": [
       "prisma/schema.prisma",
       "src/models/User.ts",
       "prisma/migrations/*/migration.sql"
     ],
+    "leverage": [
+      "src/config/database.ts"
+    ],
+    "parallel": true,
+    "conflictsWith": [],
+    "source": "inferred",
+    "status": "todo",
+    "passes": false,
     "notes": "Use UUID for ID. Follow existing model patterns in the project. Use password_hash field, never plain text password."
   },
   {
     "id": "US-002",
-    "title": "Create user registration endpoint",
-    "description": "As a user, I want to register with email and password to access the application.",
+    "type": "feature",
+    "title": "User registers with email and password",
+    "description": "As a visitor, I want to register so that I can access the app.",
+    "independentTest": "POST /api/auth/register creates a user and returns 201",
     "acceptanceCriteria": [
-      "POST /api/auth/register receives email, password, name",
-      "Input validation: valid email, password >= 8 characters, non-empty name",
-      "Email uniqueness check (returns 409 if already exists)",
-      "Password hashed before saving to database",
-      "Returns 201 with created user data (without password_hash)",
-      "Returns 400 for invalid data with clear messages"
+      {"kind": "happy", "text": "Valid payload returns 201 without password_hash", "verify": "npm test -- auth.register"},
+      {"kind": "edge", "text": "Duplicate email returns 409", "verify": "npm test -- auth.register"},
+      {"kind": "error", "text": "Password under 8 chars returns 400 with message", "verify": "npm test -- auth.register"}
     ],
     "priority": 2,
     "complexity": "M",
-    "dependencies": ["US-001"],
+    "dependencies": [
+      {"id": "US-001", "reason": "needs User model"}
+    ],
+    "interfaces": {
+      "consumes": [
+        "User.create()"
+      ],
+      "produces": [
+        "POST /api/auth/register"
+      ]
+    },
     "filesToTouch": [
       "src/controllers/AuthController.ts",
       "src/routes/auth.routes.ts",
       "src/validators/auth.validator.ts"
     ],
+    "leverage": [
+      "src/validators/base.validator.ts"
+    ],
+    "parallel": false,
+    "conflictsWith": [
+      "US-004"
+    ],
+    "source": "explicit",
+    "status": "todo",
+    "passes": false,
     "notes": "Use `express-validator` library for validation (already installed). Follow existing JSON response pattern in the application."
   },
   {
     "id": "US-003",
+    "type": "enabler",
     "title": "Configure JWT and create utilities",
     "description": "As a developer, I want utilities to generate and verify JWT tokens to implement stateless authentication.",
+    "independentTest": "generateToken(userId) returns a token that verifyToken(token) decodes back to the same userId",
     "acceptanceCriteria": [
-      "jsonwebtoken package installed",
-      "generateToken(userId) function returns valid JWT with 24h expiration",
-      "verifyToken(token) function returns decoded payload or null if invalid",
-      "Secret key loaded from JWT_SECRET environment variable",
-      "TypeScript types defined for JWT payload",
-      "Unit tests for both functions"
+      {"kind": "happy", "text": "jsonwebtoken package installed", "verify": "npm ls jsonwebtoken"},
+      {"kind": "happy", "text": "generateToken(userId) function returns valid JWT with 24h expiration", "verify": "npm test -- jwt"},
+      {"kind": "happy", "text": "verifyToken(token) function returns decoded payload", "verify": "npm test -- jwt"},
+      {"kind": "error", "text": "verifyToken(token) returns null for an expired or malformed token", "verify": "npm test -- jwt"},
+      {"kind": "happy", "text": "Secret key loaded from JWT_SECRET environment variable", "verify": "npm test -- jwt"},
+      {"kind": "happy", "text": "TypeScript types defined for JWT payload", "verify": "npx tsc --noEmit"}
     ],
     "priority": 3,
     "complexity": "S",
     "dependencies": [],
+    "interfaces": {
+      "consumes": [],
+      "produces": [
+        "generateToken(userId)",
+        "verifyToken(token)"
+      ]
+    },
     "filesToTouch": [
       "src/utils/jwt.ts",
       "src/types/auth.d.ts",
       ".env.example"
     ],
+    "leverage": [],
+    "parallel": true,
+    "conflictsWith": [],
+    "source": "inferred",
+    "status": "todo",
+    "passes": false,
     "notes": "Add JWT_SECRET to .env.example. Consider refresh tokens in future iteration if needed."
   },
   {
     "id": "US-004",
+    "type": "feature",
     "title": "Create login endpoint",
     "description": "As a user, I want to login with email and password to receive an access token.",
+    "independentTest": "POST /api/auth/login with a registered user's credentials returns 200 and a token that verifyToken accepts",
     "acceptanceCriteria": [
-      "POST /api/auth/login receives email and password",
-      "Checks if user exists (404 if not found)",
-      "Compares password with bcrypt.compare (401 if invalid)",
-      "Generates JWT token with userId in payload",
-      "Returns 200 with token and basic user data",
-      "Returns 401 for invalid credentials (generic message for security)"
+      {"kind": "happy", "text": "POST /api/auth/login with valid credentials returns 200 with a JWT (userId in payload) and basic user data", "verify": "npm test -- auth.login"},
+      {"kind": "error", "text": "Unknown email returns 401 with the same generic message 'Invalid credentials'", "verify": "npm test -- auth.login"},
+      {"kind": "error", "text": "Wrong password returns 401 with the generic message 'Invalid credentials'", "verify": "npm test -- auth.login"},
+      {"kind": "happy", "text": "Password is compared with bcrypt.compare", "verify": "npm test -- auth.login"}
     ],
     "priority": 4,
     "complexity": "M",
-    "dependencies": ["US-001", "US-003"],
+    "dependencies": [
+      {"id": "US-001", "reason": "needs User.findByEmail() to look up the user"},
+      {"id": "US-003", "reason": "needs generateToken() to issue the token"}
+    ],
+    "interfaces": {
+      "consumes": [
+        "User.findByEmail()",
+        "generateToken(userId)"
+      ],
+      "produces": [
+        "POST /api/auth/login"
+      ]
+    },
     "filesToTouch": [
       "src/controllers/AuthController.ts",
       "src/routes/auth.routes.ts"
     ],
+    "leverage": [],
+    "parallel": false,
+    "conflictsWith": [
+      "US-002"
+    ],
+    "source": "explicit",
+    "status": "todo",
+    "passes": false,
     "notes": "Don't reveal if email exists or password is wrong (generic message: 'Invalid credentials'). Rate limiting will be implemented in future story."
   },
   {
     "id": "US-005",
+    "type": "enabler",
     "title": "Create authentication middleware",
     "description": "As a developer, I want middleware to protect private routes ensuring only authenticated users can access.",
+    "independentTest": "A test route behind authMiddleware returns 200 with a valid Bearer token and 401 without one",
     "acceptanceCriteria": [
-      "authMiddleware extracts token from Authorization header (Bearer token)",
-      "Verifies JWT token and decodes userId",
-      "Fetches user from database and attaches to req.user",
-      "Returns 401 if token is missing",
-      "Returns 401 if token is invalid or expired",
-      "Returns 404 if user not found (valid token but user deleted)",
-      "Request type extended to include user"
+      {"kind": "happy", "text": "authMiddleware extracts the Bearer token, verifies it and attaches the user fetched from the database to req.user", "verify": "npm test -- auth.middleware"},
+      {"kind": "error", "text": "Returns 401 if token is missing", "verify": "npm test -- auth.middleware"},
+      {"kind": "error", "text": "Returns 401 if token is invalid or expired", "verify": "npm test -- auth.middleware"},
+      {"kind": "edge", "text": "Returns 404 if user not found (valid token but user deleted)", "verify": "npm test -- auth.middleware"},
+      {"kind": "happy", "text": "Request type extended to include user", "verify": "npx tsc --noEmit"}
     ],
     "priority": 5,
     "complexity": "M",
-    "dependencies": ["US-003"],
+    "dependencies": [
+      {"id": "US-001", "reason": "needs User.findById() to load the user"},
+      {"id": "US-003", "reason": "needs verifyToken() to check the token"}
+    ],
+    "interfaces": {
+      "consumes": [
+        "verifyToken(token)",
+        "User.findById()"
+      ],
+      "produces": [
+        "authMiddleware",
+        "req.user"
+      ]
+    },
     "filesToTouch": [
       "src/middlewares/auth.ts",
       "src/types/express.d.ts"
     ],
+    "leverage": [],
+    "parallel": true,
+    "conflictsWith": [],
+    "source": "inferred",
+    "status": "todo",
+    "passes": false,
     "notes": "Extend Express namespace to add user to Request. Middleware should be reusable in any route."
   },
   {
     "id": "US-006",
+    "type": "feature",
     "title": "Create user profile endpoint",
     "description": "As an authenticated user, I want to view my profile data to confirm my information.",
+    "independentTest": "GET /api/users/me with a valid token returns 200 with the user's id, email, name and created_at",
     "acceptanceCriteria": [
-      "GET /api/users/me returns logged user data",
-      "Route protected by authMiddleware",
-      "Returns 200 with id, email, name, created_at",
-      "Does not return password_hash",
-      "Returns 401 if not authenticated"
+      {"kind": "happy", "text": "GET /api/users/me returns 200 with id, email, name, created_at and without password_hash", "verify": "npm test -- users.me"},
+      {"kind": "error", "text": "Returns 401 if not authenticated", "verify": "npm test -- users.me"}
     ],
     "priority": 6,
     "complexity": "XS",
-    "dependencies": ["US-005"],
+    "dependencies": [
+      {"id": "US-005", "reason": "needs authMiddleware to populate req.user"}
+    ],
+    "interfaces": {
+      "consumes": [
+        "authMiddleware",
+        "req.user"
+      ],
+      "produces": [
+        "GET /api/users/me"
+      ]
+    },
     "filesToTouch": [
       "src/controllers/UserController.ts",
       "src/routes/user.routes.ts"
     ],
+    "leverage": [],
+    "parallel": true,
+    "conflictsWith": [],
+    "source": "inferred",
+    "status": "todo",
+    "passes": false,
     "notes": "Simple route to validate that authentication middleware is working. Use req.user populated by middleware."
   }
 ]
@@ -184,7 +292,7 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
 
 ## How to Use This Plan
 
-1. **Implement** following priority order (US-001 → US-006)
-2. **Verify** acceptance criteria before considering each story done
+1. **Pick** the next story whose `status` is `todo` and whose dependencies are all `done`; stories with `parallel: true` can run at the same time
+2. **Verify** by running the `verify` check of each acceptance criterion; when all of them pass, set `"passes": true` and `"status": "done"`
 3. **Check** boxes in Definition of Done as you progress
 4. **Update** this file if you find new dependencies or requirements during implementation
