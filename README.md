@@ -18,44 +18,61 @@
 - **Clear Acceptance Criteria** - Every story has verifiable completion criteria
 - **Dynamic File Naming** - Generates descriptive filenames based on your goal
 - **Multiple Output Formats** - Choose between JSON (default) or Gherkin (BDD)
-- **Plan Mode Compatible** - Works safely without making code changes
+- **Plan-Only Output** - Never changes your code; the only file it writes is the plan in `.context/` (so it needs a mode that allows file writes, not Plan Mode)
 - **Universal Compatibility** - Works with any LLM supporting Agent Skills
 
 ## 📦 Installation
 
-### Option 1: Direct Clone (Universal)
-
-Works with any AI assistant:
+Clone the repository once, then link the clone into the skills folder of each assistant you use. Run every link command **from the root of the clone** (`user-stories-skill/`, the folder that holds `SKILL.md`): the link points at `$(pwd)`.
 
 ```bash
 git clone https://github.com/felipereisdev/user-stories-skill.git
+cd user-stories-skill
 ```
 
-Then configure your AI assistant to load skills from the cloned directory.
-
-### Option 2: Claude Code
+### Claude Code
 
 ```bash
-# Clone into your global skills
 mkdir -p ~/.claude/skills
-ln -s "$(pwd)/user-stories" ~/.claude/skills/user-stories
+ln -sfn "$(pwd)" ~/.claude/skills/user-stories
 ```
 
-### Option 3: OpenCode/Codex
+### Codex
 
 ```bash
-# Clone into your global skills
-mkdir -p ~/.codex/skills
-ln -s "$(pwd)/user-stories" ~/.codex/skills/user-stories
+mkdir -p ~/.agents/skills
+ln -sfn "$(pwd)" ~/.agents/skills/user-stories
 ```
 
-### Option 4: Cursor
+### OpenCode
 
 ```bash
-# Clone into your Cursor skills directory
+mkdir -p ~/.config/opencode/skills
+ln -sfn "$(pwd)" ~/.config/opencode/skills/user-stories
+```
+
+OpenCode also reads `~/.claude/skills` and `~/.agents/skills`. If you already linked the skill for Claude Code or Codex, OpenCode finds it there: do not create a second link, or the skill shows up twice.
+
+### Cursor
+
+```bash
 mkdir -p ~/.cursor/skills
-ln -s "$(pwd)/user-stories" ~/.cursor/skills/user-stories
+ln -sfn "$(pwd)" ~/.cursor/skills/user-stories
 ```
+
+### Other assistants
+
+Link the clone into the skills folder your assistant reads, with the name `user-stories`. Cursor and the Agent Skills standard require the folder name to match the skill's `name`.
+
+### Check the link
+
+```bash
+ls ~/.claude/skills/user-stories/SKILL.md
+```
+
+Replace the path with the skills folder you used; the file must exist.
+
+`ln -sfn` replaces an earlier link, so running the commands again is safe. If a real folder (not a link) already exists at that path, remove it first.
 
 ## 🚀 Usage
 
@@ -83,12 +100,22 @@ Invoke the skill with your goal and optional format:
 
 ### OpenCode
 
-```bash
-# JSON format (default)
-@user-stories "implement user authentication with JWT"
+OpenCode loads skills through its `skill` tool from your request:
 
-# Gherkin format (BDD)
-@user-stories "implement user authentication with JWT" --format=gherkin
+```text
+Use the user-stories skill to plan: implement user authentication with JWT
+
+Use the user-stories skill to plan: implement user authentication with JWT --format=gherkin
+```
+
+### Codex
+
+Type `$` to mention the skill:
+
+```text
+$user-stories "implement user authentication with JWT"
+
+$user-stories "implement user authentication with JWT" --format=gherkin
 ```
 
 ### Cursor
@@ -176,7 +203,7 @@ This skill follows the [Agent Skills Standard](https://agentskills.io), making i
 - `Write` - Plan generation
 - `Bash` - Directory operations
 
-Runs in `context: fork` with `agent: Explore` for safe, read-only analysis.
+Runs in `context: fork` with `agent: general-purpose`: an isolated subagent that reads your code and writes only the plan file (the read-only `Explore` agent cannot save it). In Claude Code the fork runs in the background by default; you are notified when the plan is saved.
 
 ## 📚 Example Files
 
