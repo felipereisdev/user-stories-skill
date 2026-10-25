@@ -5,13 +5,13 @@ argument-hint: <goal-description> [--format=json|gherkin]
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Grep, Glob, Write, Bash
-code: fork
-agent: Explore
+context: fork
+agent: general-purpose
 ---
 
 # User Stories - Codebase Analysis & Story Breakdown
 
-Analyze a codebase and break down a goal into small, atomic, implementable user stories. **Do NOT implement anything — only analyze and plan.**
+Analyze a codebase and break down a goal into small, atomic, implementable user stories. **Do NOT implement anything — only analyze and plan.** The plan file in `.context/` is the only file you write — never create, edit or delete any other file.
 
 ## Input
 
