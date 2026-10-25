@@ -153,6 +153,8 @@ In Claude Code the skill runs in a forked subagent, which cannot wait for your r
 /user-stories "add notifications" --answers=recommended
 ```
 
+Running `/user-stories` with no goal works the same way: the skill only asks for the goal and writes nothing; in Claude Code, Claude runs it again with the goal you give.
+
 Doubts that do not block the plan never become questions: they go into the plan's Assumptions and Open Questions sections.
 
 ## 📄 Output

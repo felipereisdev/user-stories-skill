@@ -15,7 +15,7 @@ Analyze a codebase and break down a goal into small, atomic, implementable user 
 
 ## Input
 
-If `$ARGUMENTS` is empty, ask: "What goal would you like to break down into user stories? You can optionally add `--format=gherkin` for BDD-style output."
+If `$ARGUMENTS` is empty (no goal), do not explore the code and do not write any file. End your response with only this: "What goal would you like to break down into user stories? You can optionally add `--format=gherkin` for BDD-style output." followed by the line "_Calling agent: show this question to the user. When the user replies, run this skill again with their goal as the argument. Do not write the plan yourself._"
 
 Otherwise, extract the goal, the optional format flag (`--format=json` default, or `--format=gherkin`) and the optional `--answers="..."`, which carries the user's answers to the clarifying questions of an earlier run (see [Clarification Protocol](#clarification-protocol)). If the format is invalid: "Invalid format. Use `--format=json` (default) or `--format=gherkin` for BDD-style output." The filename comes from the goal only, never from the flags.
 
@@ -92,7 +92,7 @@ Create the plan file with this structure:
 # Development Plan: [Goal Summary]
 
 **Generated**: [ISO Date]  
-**Goal**: $ARGUMENTS
+**Goal**: [the goal, without the `--format` and `--answers` flags]
 
 ## Context Summary
 
