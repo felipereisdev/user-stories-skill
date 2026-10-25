@@ -21,6 +21,7 @@
 - **Execution-Ready Stories** - Schema v2: each story has a type, an independent test, a `verify` check per criterion, dependencies with reasons, interfaces, files to reuse, and `parallel`/`conflictsWith` derived from the files it touches
 - **Dynamic File Naming** - Generates descriptive filenames based on your goal
 - **Multiple Output Formats** - Choose between JSON (default) or Gherkin (BDD)
+- **Deterministic Plan Linter** - `scripts/lint_plan.py` (Python 3.9+, standard library only) checks every plan before it is saved and runs in CI on the examples
 - **Plan-Only Output** - Never changes your code; the only file it writes is the plan in `.context/` (so it needs a mode that allows file writes, not Plan Mode)
 - **Universal Compatibility** - Works with any LLM supporting Agent Skills
 
@@ -264,6 +265,53 @@ Feature: User registers with email and password
     And I should see an error message about email already in use
 ```
 
+## ✅ Plan Linter
+
+`scripts/lint_plan.py` checks a plan mechanically, so the rules a model tends to forget do not reach the executor. It is one file, Python 3.9 or newer, standard library only. It only reads the plan: it never writes, renames or deletes a file, and never runs a `verify` check.
+
+The skill writes the plan to `.context/<slug>-plan.draft.md`, runs the linter on it, fixes what it reports (at most 3 runs) and only then renames it to `.context/<slug>-plan.md`. Without a usable `python3`, the skill checks the Schema v2 checklist by hand and says in its response that the plan was not linted.
+
+### What it checks
+
+- **Plan**: the `**Schema**: v2` header (`header`), a non-empty `## Assumptions` and an `## Open Questions` section (`sections`), exactly one JSON stories block or at least one Gherkin Feature (`stories-block`), and the Gherkin Feature layout (`gherkin`)
+- **Fields**: all 18 fields, no unknown ones, in order (`fields`), with the right types and values (`field-type`)
+- **IDs and priorities**: `US-001` format (`id-format`), unique (`id-unique`), in sequence (`id-sequence`), priorities 1..N once each (`priority`)
+- **Acceptance criteria**: `{kind, text, verify}` (`criteria`), a `happy` one and an `edge`/`error` one for each feature and bug (`criteria-min`); spikes (`spike`)
+- **Dependencies**: they exist (`dependency-missing`), come earlier (`dependency-order`), are not repeated (`dependency-duplicate`) and have no cycles (`dependency-cycle`)
+- **Parallel work**: `conflictsWith` equals the stories that share a file in `filesToTouch` (`conflicts`), and `parallel` follows it (`parallel`)
+- **Files**: paths are relative, without `..` (`path-outside`); each `leverage` path exists (`leverage-missing`); each `filesToTouch` path exists or its top-level directory does (`file-unanchored`)
+- **New plans** (`--new`): every story is `status` `todo` and `passes` `false` (`new-plan`)
+
+### Usage
+
+From the project root, with the path of your clone of the skill:
+
+```bash
+python3 ~/.claude/skills/user-stories/scripts/lint_plan.py --new .context/my-goal-plan.md
+```
+
+| Option | Effect |
+|--------|--------|
+| `--new` | The plan was just generated: every story must be `todo` / `passes: false`. Leave it out to lint a plan in progress |
+| `--root DIR` | Project root for the file rules (default: the current directory) |
+| `--skip-files` | Skip the rules that look at the disk (`leverage-missing`, `file-unanchored`); cannot be used with `--root` |
+
+Exit codes: `0` no problems, `1` rule problems, `2` usage or read error. Each problem is one line, `file:line: story: rule: message`:
+
+```
+.context/my-goal-plan.md:57: US-006: dependency-missing: depends on US-009, which is not in the plan
+.context/my-goal-plan.md: 1 problem(s)
+```
+
+### Tests and CI
+
+```bash
+python3 -m unittest discover -s tests -v
+python3 scripts/lint_plan.py --new --skip-files example-output.md example-gherkin-output.md
+```
+
+The `Plan Lint` workflow (`.github/workflows/plan-lint.yml`) runs both on Python 3.9 and 3.13 on every push and pull request. The examples use `--skip-files` because they describe a project that is not in this repository.
+
 ## 🎯 Examples
 
 | Goal | Generated File | Format |
@@ -292,7 +340,7 @@ This skill follows the [Agent Skills Standard](https://agentskills.io), making i
 - `Grep` - Pattern searching  
 - `Glob` - File discovery
 - `Write` - Plan generation
-- `Bash` - Directory operations
+- `Bash` - Directory operations and the plan linter
 
 Runs in `context: fork` with `agent: general-purpose`: an isolated subagent that reads your code and writes only the plan file (the read-only `Explore` agent cannot save it). In Claude Code the fork runs in the background by default; you are notified when the plan is saved. Because the fork cannot wait for an answer, an ambiguous goal ends the run with the questions; see [Clarifying questions](#clarifying-questions).
 
@@ -322,6 +370,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Inspired by Agile/Scrum best practices and Polyscope's autopilot mode
 - Clarification protocol inspired by spec-kit's `/clarify`, Ralph's PRD skill, bobchao and superpowers
 - Schema v2 inspired by Ralph, Task Master, ccpm, cc-sdd, spec-workflow-mcp, superpowers and SprintiQ
+- Plan linter inspired by Mercadona, ccpm's validate.sh, OpenSpec validate and Task Master
 - Built following the [Agent Skills Standard](https://agentskills.io)
 - Compatible with Claude Code, OpenCode, Cursor, and any Agent Skills-compatible AI
 - Community-driven development
