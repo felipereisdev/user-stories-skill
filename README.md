@@ -13,6 +13,8 @@
 ## 🌟 Features
 
 - **Automatic Codebase Analysis** - Understands your project architecture and patterns
+- **Clarify Before Planning** - Explores the code first, then asks at most 5 blocking multiple-choice questions, each with a recommended answer, and only when the goal is ambiguous
+- **Recorded Assumptions** - Every plan lists the assumptions it made and the open questions left for later
 - **Atomic User Stories** - Breaks goals into 2-4 hour implementable chunks
 - **Dependency Ordering** - Stories ordered so earlier ones enable later ones
 - **Clear Acceptance Criteria** - Every story has verifiable completion criteria
@@ -128,9 +130,34 @@ $user-stories "implement user authentication with JWT" --format=gherkin
 /user-stories "implement user authentication with JWT" --format=gherkin
 ```
 
+### Clarifying questions
+
+The skill reads your code before asking anything. A clear goal gets no questions: the plan is written and records the assumptions it made. An ambiguous goal gets at most 5 questions, only the ones that block the plan, each with lettered options and a recommended answer, and no plan is written yet:
+
+```text
+**1. Which notification channel should the first version support?**
+Found: no mail or push provider in package.json; todos live in memory in src/routes/todos.js
+- **A)** In-app notifications served by a new /notifications route
+- **B)** Email
+- **C)** Both
+
+**Recommended: A** — needs no new dependency or credentials
+```
+
+Reply with a number and a letter per question, for example `1A, 2C`, or `recommended` to accept every recommendation. You can also answer in your own words.
+
+In Claude Code the skill runs in a forked subagent, which cannot wait for your reply: it returns the questions and stops, and when you answer, Claude runs the skill again with your choices in `--answers`. You can pass them yourself too, spelling out each choice:
+
+```bash
+/user-stories "add notifications" --answers="1A: in-app only; 2B: notify when a todo is created or completed"
+/user-stories "add notifications" --answers=recommended
+```
+
+Doubts that do not block the plan never become questions: they go into the plan's Assumptions and Open Questions sections.
+
 ## 📄 Output
 
-Creates `.context/[goal-slug]-plan.md` with structured user stories.
+Creates `.context/[goal-slug]-plan.md` with structured user stories, the assumptions the plan made and its open questions (plus your answers under Clarifications, when the skill asked any).
 
 ### JSON Format (Default)
 
@@ -203,7 +230,7 @@ This skill follows the [Agent Skills Standard](https://agentskills.io), making i
 - `Write` - Plan generation
 - `Bash` - Directory operations
 
-Runs in `context: fork` with `agent: general-purpose`: an isolated subagent that reads your code and writes only the plan file (the read-only `Explore` agent cannot save it). In Claude Code the fork runs in the background by default; you are notified when the plan is saved.
+Runs in `context: fork` with `agent: general-purpose`: an isolated subagent that reads your code and writes only the plan file (the read-only `Explore` agent cannot save it). In Claude Code the fork runs in the background by default; you are notified when the plan is saved. Because the fork cannot wait for an answer, an ambiguous goal ends the run with the questions; see [Clarifying questions](#clarifying-questions).
 
 ## 📚 Example Files
 
@@ -229,6 +256,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Inspired by Agile/Scrum best practices and Polyscope's autopilot mode
+- Clarification protocol inspired by spec-kit's `/clarify`, Ralph's PRD skill, bobchao and superpowers
 - Built following the [Agent Skills Standard](https://agentskills.io)
 - Compatible with Claude Code, OpenCode, Cursor, and any Agent Skills-compatible AI
 - Community-driven development
