@@ -1,6 +1,6 @@
 ---
 name: user-stories
-description: "Analyzes a codebase and breaks down a goal into implementable user stories with clear acceptance criteria. Use when planning a new feature, estimating work, or creating a development roadmap. Explores the code before asking anything; when the goal is ambiguous, asks at most 5 blocking multiple-choice questions with a recommended answer, and records assumptions and open questions in the plan. Outputs execution-ready stories (schema v2: type, status, a verify check per criterion, dependencies with reasons, interfaces, files to reuse, file conflicts for parallel work) to .context/[goal-slug]-plan.md ordered by dependency. Filename is generated from the goal (kebab-case, 3-5 words). Do NOT implement anything - only analyze and plan."
+description: "Analyzes a codebase and breaks down a goal into implementable user stories with clear acceptance criteria. Use when planning a new feature, estimating work, or creating a development roadmap. Explores the code before asking anything; when the goal is ambiguous, asks at most 5 blocking multiple-choice questions with a recommended answer, and records assumptions and open questions in the plan. Outputs execution-ready stories (schema v2: type, status, a verify check per criterion, dependencies with reasons, interfaces, files to reuse, file conflicts for parallel work) to .context/[goal-slug]-plan.md ordered by dependency. Checks the plan with its bundled standard-library Python linter (scripts/lint_plan.py) when python3 is available. Filename is generated from the goal (kebab-case, 3-5 words). Do NOT implement anything - only analyze and plan."
 argument-hint: <goal-description> [--format=json|gherkin] [--answers="<choices>"]
 disable-model-invocation: false
 user-invocable: true
@@ -11,7 +11,7 @@ agent: general-purpose
 
 # User Stories - Codebase Analysis & Story Breakdown
 
-Analyze a codebase and break down a goal into small, atomic, implementable user stories. **Do NOT implement anything — only analyze and plan.** The plan file in `.context/` is the only file you write — never create, edit or delete any other file.
+Analyze a codebase and break down a goal into small, atomic, implementable user stories. **Do NOT implement anything — only analyze and plan.** The plan file in `.context/` (written first as a `.draft.md` and then renamed) is the only file you write — never create, edit or delete any other file.
 
 ## Input
 
@@ -28,8 +28,9 @@ Otherwise, extract the goal, the optional format flag (`--format=json` default, 
 5. **Estimate** complexity per story: XS (<1h, single file), S (1–2h), M (2–4h), L (4–8h), XL (break it down further)
 6. **Derive** `conflictsWith` and `parallel` after the stories are final: compare the `filesToTouch` of every pair of stories; when two share a path, list each in the other's `conflictsWith`; set `parallel` to `true` only when `conflictsWith` is `[]` (see [Schema v2 fields](#schema-v2-fields)). Derive again if any `filesToTouch` changes
 7. **Generate filename** from the goal (see [naming rules](#output-file-naming))
-8. **Write** the plan to `.context/[slug]-plan.md` using JSON or Gherkin format, with `status` `todo` and `passes` `false` on every story
-9. **Verify** the plan against the [Schema v2 checklist](#schema-v2-checklist), and that it lists its assumptions and open questions
+8. **Write** the plan to `.context/[slug]-plan.draft.md` using JSON or Gherkin format, with `status` `todo` and `passes` `false` on every story
+9. **Lint** the draft: from the project root, run `python3 <skill-folder>/scripts/lint_plan.py --new .context/[slug]-plan.draft.md`, where `<skill-folder>` is the folder that holds this SKILL.md. Each output line is `file:line: story: rule: message`; fix every problem in the draft and run it again, at most 3 runs in all. Then rename the draft: `mv .context/[slug]-plan.draft.md .context/[slug]-plan.md`. If problems remain after the third run, rename it anyway and list the remaining lines in your response
+10. **Verify** the plan against the [Schema v2 checklist](#schema-v2-checklist) — the linter already checked the items marked (linted); check the others yourself — and that it lists its assumptions and open questions
 
 ### Error Recovery
 
@@ -38,6 +39,7 @@ Otherwise, extract the goal, the optional format flag (`--format=json` default, 
 - **No relevant codebase patterns found**: note in Context Summary and plan from first principles
 - **Story too large** (XL+): decompose into sub-stories before continuing
 - **Fewer than 3 stories**: verify granularity is sufficient for the goal
+- **Linter not available**: if `python3` is not found, or the linter says it needs a newer Python, rename the draft to the plan, check the whole Schema v2 checklist yourself, and say in your response that the plan was not linted
 
 ## Clarification Protocol
 
@@ -187,15 +189,15 @@ Every story has these 18 fields, in this order. The rules apply to the JSON and 
 
 Before you finish, check every story:
 
-- [ ] All 18 fields are present, in the order of [Schema v2 fields](#schema-v2-fields)
-- [ ] Each criterion has `kind`, `text` and `verify`; there is at least one `happy`; each `feature` and `bug` has an `edge` or `error`
-- [ ] `priority` runs 1..N with no repeats
-- [ ] Each dependency points to an earlier story (a smaller `priority` number) and has a `reason`
+- [ ] All 18 fields are present, in the order of [Schema v2 fields](#schema-v2-fields) (linted)
+- [ ] Each criterion has `kind`, `text` and `verify`; there is at least one `happy`; each `feature` and `bug` has an `edge` or `error` (linted)
+- [ ] `priority` runs 1..N with no repeats (linted)
+- [ ] Each dependency points to an earlier story (a smaller `priority` number) and has a `reason` (linted)
 - [ ] Each `consumes` item is produced by a dependency or exists in the code
-- [ ] Each `leverage` path exists (you read it)
-- [ ] `filesToTouch` is empty only in a `spike`, and a `spike` is at most `M`
-- [ ] `conflictsWith` lists exactly the other stories that share a file, on both sides, and `parallel` is `true` only when it is empty
-- [ ] `status` is `todo` and `passes` is `false`
+- [ ] Each `leverage` path exists (linted), and you read it
+- [ ] `filesToTouch` is empty only in a `spike`, and a `spike` is at most `M` (linted)
+- [ ] `conflictsWith` lists exactly the other stories that share a file, on both sides, and `parallel` is `true` only when it is empty (linted)
+- [ ] `status` is `todo` and `passes` is `false` (linted)
 - [ ] No `verify` names a tool the project does not have
 
 Include `## Clarifications` only when questions were answered. Always include `## Assumptions` (never empty: at least the scope boundaries you chose) and `## Open Questions` (`None.` when there are none).
