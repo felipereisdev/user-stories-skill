@@ -1,6 +1,6 @@
 ---
 name: user-stories
-description: "Analyzes a codebase and breaks down a goal into implementable user stories with clear acceptance criteria. Use when planning a new feature, estimating work, or creating a development roadmap. Explores the code before asking anything; when the goal is ambiguous, asks at most 5 blocking multiple-choice questions with a recommended answer, and records assumptions and open questions in the plan. Outputs structured stories to .context/[goal-slug]-plan.md ordered by dependency. Filename is generated from the goal (kebab-case, 3-5 words). Do NOT implement anything - only analyze and plan."
+description: "Analyzes a codebase and breaks down a goal into implementable user stories with clear acceptance criteria. Use when planning a new feature, estimating work, or creating a development roadmap. Explores the code before asking anything; when the goal is ambiguous, asks at most 5 blocking multiple-choice questions with a recommended answer, and records assumptions and open questions in the plan. Outputs execution-ready stories (schema v2: type, status, a verify check per criterion, dependencies with reasons, interfaces, files to reuse, file conflicts for parallel work) to .context/[goal-slug]-plan.md ordered by dependency. Filename is generated from the goal (kebab-case, 3-5 words). Do NOT implement anything - only analyze and plan."
 argument-hint: <goal-description> [--format=json|gherkin] [--answers="<choices>"]
 disable-model-invocation: false
 user-invocable: true
@@ -21,14 +21,15 @@ Otherwise, extract the goal, the optional format flag (`--format=json` default, 
 
 ## Workflow
 
-1. **Explore** the codebase with Glob/Grep/Read: architecture, patterns, frameworks, similar existing features
+1. **Explore** the codebase with Glob/Grep/Read: architecture, patterns, frameworks, similar existing features. Note the project's own test, lint and build commands (from `package.json`, `Makefile`, `pyproject.toml` and the like, for `verify`) and the existing files and helpers a story should reuse (for `leverage`)
 2. **Clarify** what the code does not answer, following the [Clarification Protocol](#clarification-protocol): either stop with at most 5 blocking questions, or record assumptions and open questions and go on
-3. **Decompose** the goal into 3–10 atomic user stories, each completable in one coding session (2–4 hours max)
-4. **Sequence** stories by technical and logical dependency — earlier stories enable later ones
+3. **Decompose** the goal into 3–10 atomic user stories, each completable in one coding session (2–4 hours max). Give each story a `type`, a `source` and an `independentTest`, and write its acceptance criteria as `{kind, text, verify}`
+4. **Sequence** stories by technical and logical dependency — earlier stories enable later ones. Give every dependency a `reason`, and write `interfaces`: each item a story `consumes` is produced by one of its dependencies or already exists in the code
 5. **Estimate** complexity per story: XS (<1h, single file), S (1–2h), M (2–4h), L (4–8h), XL (break it down further)
-6. **Generate filename** from the goal (see [naming rules](#output-file-naming))
-7. **Write** the plan to `.context/[slug]-plan.md` using JSON or Gherkin format
-8. **Verify** all stories have clear acceptance criteria and reasonable scope, and the plan lists its assumptions and open questions
+6. **Derive** `conflictsWith` and `parallel` after the stories are final: compare the `filesToTouch` of every pair of stories; when two share a path, list each in the other's `conflictsWith`; set `parallel` to `true` only when `conflictsWith` is `[]` (see [Schema v2 fields](#schema-v2-fields)). Derive again if any `filesToTouch` changes
+7. **Generate filename** from the goal (see [naming rules](#output-file-naming))
+8. **Write** the plan to `.context/[slug]-plan.md` using JSON or Gherkin format, with `"status": "todo"` and `"passes": false` on every story
+9. **Verify** the plan against the [Schema v2 checklist](#schema-v2-checklist), and that it lists its assumptions and open questions
 
 ### Error Recovery
 
@@ -92,7 +93,8 @@ Create the plan file with this structure:
 # Development Plan: [Goal Summary]
 
 **Generated**: [ISO Date]  
-**Goal**: [the goal, without the `--format` and `--answers` flags]
+**Goal**: [the goal, without the `--format` and `--answers` flags]  
+**Schema**: v2
 
 ## Context Summary
 
@@ -115,18 +117,27 @@ Create the plan file with this structure:
 ```json
 [
   {
-    "id": "US-001",
+    "id": "US-002",
+    "type": "feature",
     "title": "Story title in user voice",
     "description": "As a [user type], I want [goal] so that [benefit]. Implementation details...",
+    "independentTest": "One sentence: how to prove this story works on its own, with its dependencies done",
     "acceptanceCriteria": [
-      "Specific, verifiable criterion 1",
-      "Specific, verifiable criterion 2",
-      "Specific, verifiable criterion 3"
+      {"kind": "happy", "text": "Specific, verifiable criterion for the expected path", "verify": "the project's own test command for this criterion, or manual: steps"},
+      {"kind": "edge", "text": "Specific, verifiable criterion for a boundary or unusual valid input", "verify": "the project's own test command for this criterion, or manual: steps"},
+      {"kind": "error", "text": "Specific, verifiable criterion for invalid input or a failure, and the response", "verify": "the project's own test command for this criterion, or manual: steps"}
     ],
-    "priority": 1,
+    "priority": 2,
     "complexity": "S",
-    "dependencies": [],
+    "dependencies": [{"id": "US-001", "reason": "What this story needs from US-001"}],
+    "interfaces": {"consumes": ["Contract from a dependency or the existing code"], "produces": ["Contract this story creates"]},
     "filesToTouch": ["path/to/file1.ts", "path/to/file2.ts"],
+    "leverage": ["path/to/existing/helper.ts"],
+    "parallel": true,
+    "conflictsWith": [],
+    "source": "explicit",
+    "status": "todo",
+    "passes": false,
     "notes": "Any technical notes or gotchas"
   }
 ]
@@ -145,6 +156,47 @@ Create the plan file with this structure:
 - [ ] Code reviewed
 - [ ] Documentation updated (if needed)
 ```
+
+### Schema v2 fields
+
+Every story has these 18 fields, in this order. The rules apply to the JSON and Gherkin formats alike.
+
+| Field | Type | Rule |
+|---|---|---|
+| `id` | string | `US-001`, `US-002`, … in plan order |
+| `type` | `feature` \| `enabler` \| `bug` \| `spike` | `feature`: behavior the user sees. `enabler`: technical groundwork another story needs (model, configuration, utility). `bug`: fixes existing wrong behavior; the `description` states the current and the expected behavior. `spike`: time-boxed investigation that ends in a decision; it produces no product code, its criteria are the questions it answers, its `complexity` is at most `M`, and only a spike may have an empty `filesToTouch` |
+| `title` | string | User voice |
+| `description` | string | "As a [user type], I want [goal] so that [benefit]." plus details |
+| `independentTest` | string | One sentence: how to prove this story works on its own, with its dependencies done and no later story |
+| `acceptanceCriteria` | array of `{kind, text, verify}` | `kind`: `happy` (expected path), `edge` (valid input at a boundary or unusual), `error` (invalid input or a failure, and what the system answers). At least one `happy`; a `feature` or `bug` also has at least one `edge` or `error` |
+| `verify` | string | A command that checks the criterion with the project's own tools (the test script found in `package.json`, `Makefile`, `pyproject.toml` etc., a CLI, an HTTP call), or `manual: <steps>` when no command can. Never a tool the project does not have; a test file the story itself creates is allowed. You write it; you never run it |
+| `priority` | integer | 1..N, each once, in execution order |
+| `complexity` | `XS` \| `S` \| `M` \| `L` | An `XL` story is broken down |
+| `dependencies` | array of `{id, reason}` | `id` of an earlier story (lower priority) in this plan; `reason` says what this story needs from it; `[]` when none |
+| `interfaces` | `{consumes: [string], produces: [string]}` | Concrete contracts: function or method signature, endpoint (`POST /api/x`), event, table, environment variable, command. Each `consumes` item is produced by a story in `dependencies` or already exists in the code |
+| `filesToTouch` | array of string | Real paths the story creates or changes; `[]` only for a `spike` |
+| `leverage` | array of string | Existing files (or `path#symbol`) to reuse; you read each one while exploring; `[]` when nothing applies |
+| `parallel` | boolean | Derived: `true` exactly when `conflictsWith` is `[]` |
+| `conflictsWith` | array of id | Derived: the other stories in the plan whose `filesToTouch` shares at least one path with this story's (a glob counts when it matches the path); symmetric (if A lists B, B lists A); sorted by id |
+| `source` | `explicit` \| `inferred` | `explicit`: the goal or a clarification answer asks for the story. `inferred`: you added it because the code or another story needs it |
+| `status` | `todo` \| `in_progress` \| `done` \| `blocked` | You always write `todo`; the executor updates it |
+| `passes` | boolean | You always write `false`; the executor sets `true` only when every `verify` of the story passes |
+| `notes` | string | Technical notes or gotchas; `""` when there are none |
+
+### Schema v2 checklist
+
+Before you finish, check every story:
+
+- [ ] All 18 fields are present, in the order of [Schema v2 fields](#schema-v2-fields)
+- [ ] Each criterion has `kind`, `text` and `verify`; there is at least one `happy`; each `feature` and `bug` has an `edge` or `error`
+- [ ] `priority` runs 1..N with no repeats
+- [ ] Each dependency points to a story with a lower priority and has a `reason`
+- [ ] Each `consumes` item is produced by a dependency or exists in the code
+- [ ] Each `leverage` path exists (you read it)
+- [ ] `filesToTouch` is empty only in a `spike`, and a `spike` is at most `M`
+- [ ] `conflictsWith` lists exactly the other stories that share a file, on both sides, and `parallel` is `true` only when it is empty
+- [ ] `status` is `todo` and `passes` is `false`
+- [ ] No `verify` names a tool the project does not have
 
 Include `## Clarifications` only when questions were answered. Always include `## Assumptions` (never empty: at least the scope boundaries you chose) and `## Open Questions` (`None.` when there are none).
 
