@@ -88,7 +88,8 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
     ],
     "interfaces": {
       "consumes": [
-        "User.create()"
+        "User.create()",
+        "User.findByEmail()"
       ],
       "produces": [
         "POST /api/auth/register"
@@ -138,7 +139,9 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
     "filesToTouch": [
       "src/utils/jwt.ts",
       "src/types/auth.d.ts",
-      ".env.example"
+      ".env.example",
+      "package.json",
+      "package-lock.json"
     ],
     "leverage": [],
     "parallel": true,

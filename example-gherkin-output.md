@@ -21,12 +21,12 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
 ## Assumptions
 
 - Registration and login use email and password only; social login is out of scope — the goal names login and registration, and no OAuth library is installed.
-- Tokens are stateless JWTs signed with `JWT_SECRET`; refresh tokens are left for a later iteration — matches Feature 3.
+- Tokens are stateless JWTs signed with `JWT_SECRET`; refresh tokens are left for a later iteration — matches the notes of US-003.
 - Passwords are hashed with `bcryptjs`, already installed in the project.
 
 ## Open Questions
 
-- Should tokens be revocable on logout (a token denylist)? — affects Feature 5 (authentication middleware); assumed for now: no, tokens simply expire.
+- Should tokens be revocable on logout (a token denylist)? — affects US-005; assumed for now: no, tokens simply expire.
 
 ## User Stories (Gherkin Format)
 
@@ -104,7 +104,7 @@ Feature: Create User model and database schema
 # Priority: 2
 # Complexity: M
 # Dependencies: US-001 (needs User model)
-# Consumes: User.create()
+# Consumes: User.create(); User.findByEmail()
 # Produces: POST /api/auth/register
 # Files: src/controllers/AuthController.ts, src/routes/auth.routes.ts, src/validators/auth.validator.ts
 # Leverage: src/validators/base.validator.ts
@@ -180,7 +180,7 @@ Feature: User registers with email and password
 # Dependencies: none
 # Consumes: none
 # Produces: generateToken(userId); verifyToken(token)
-# Files: src/utils/jwt.ts, src/types/auth.d.ts, .env.example
+# Files: src/utils/jwt.ts, src/types/auth.d.ts, .env.example, package.json, package-lock.json
 # Leverage: none
 # Parallel: true
 # Conflicts With: none
