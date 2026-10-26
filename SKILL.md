@@ -125,9 +125,9 @@ Create the plan file with this structure:
     "description": "As a [user type], I want [goal] so that [benefit]. Implementation details...",
     "independentTest": "One sentence: how to prove this story works on its own, with its dependencies done",
     "acceptanceCriteria": [
-      {"kind": "happy", "text": "Specific, verifiable criterion for the expected path", "verify": "the project's own test command for this criterion, or manual: steps"},
-      {"kind": "edge", "text": "Specific, verifiable criterion for a boundary or unusual valid input", "verify": "the project's own test command for this criterion, or manual: steps"},
-      {"kind": "error", "text": "Specific, verifiable criterion for invalid input or a failure, and the response", "verify": "the project's own test command for this criterion, or manual: steps"},
+      {"kind": "happy", "text": "Specific, verifiable criterion for the expected path", "verify": "the project's own test command for this criterion, or manual: <action>; <what you observe>"},
+      {"kind": "edge", "text": "Specific, verifiable criterion for a boundary or unusual valid input", "verify": "the project's own test command for this criterion, or manual: <action>; <what you observe>"},
+      {"kind": "error", "text": "Specific, verifiable criterion for invalid input or a failure, and the response", "verify": "the project's own test command for this criterion, or manual: <action>; <what you observe>"},
       {"kind": "happy", "text": "Typecheck and tests pass", "verify": "the project's typecheck command && its test command"}
     ],
     "priority": 2,
