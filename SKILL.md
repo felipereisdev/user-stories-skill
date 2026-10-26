@@ -23,7 +23,7 @@ Otherwise, extract the goal, the optional format flag (`--format=json` default, 
 
 1. **Explore** the codebase with Glob/Grep/Read: architecture, patterns, frameworks, similar existing features. Note the project's own test, lint and build commands (from `package.json`, `Makefile`, `pyproject.toml` and the like, for `verify`) and the existing files and helpers a story should reuse (for `leverage`)
 2. **Clarify** what the code does not answer, following the [Clarification Protocol](#clarification-protocol): either stop with at most 5 blocking questions, or record assumptions and open questions and go on
-3. **Decompose** the goal into 3–10 atomic user stories, each completable in one coding session (2–4 hours max). Give each story a `type`, a `source` and an `independentTest`, and write its acceptance criteria as `{kind, text, verify}`
+3. **Decompose** the goal into 3–10 atomic user stories, each completable in one coding session (2–4 hours max). Give each story a `type`, a `source` and an `independentTest`, and write its acceptance criteria as `{kind, text, verify}` following the [Acceptance criteria rules](#acceptance-criteria-rules)
 4. **Sequence** stories by technical and logical dependency — earlier stories enable later ones. Give every dependency a `reason`, and write `interfaces`: each item a story `consumes` is produced by one of its dependencies or already exists in the code
 5. **Estimate** complexity per story: XS (<1h, single file), S (1–2h), M (2–4h), L (4–8h), XL (break it down further)
 6. **Derive** `conflictsWith` and `parallel` after the stories are final: compare the `filesToTouch` of every pair of stories; when two share a path, list each in the other's `conflictsWith`; set `parallel` to `true` only when `conflictsWith` is `[]` (see [Schema v2 fields](#schema-v2-fields)). Derive again if any `filesToTouch` changes
@@ -127,7 +127,8 @@ Create the plan file with this structure:
     "acceptanceCriteria": [
       {"kind": "happy", "text": "Specific, verifiable criterion for the expected path", "verify": "the project's own test command for this criterion, or manual: steps"},
       {"kind": "edge", "text": "Specific, verifiable criterion for a boundary or unusual valid input", "verify": "the project's own test command for this criterion, or manual: steps"},
-      {"kind": "error", "text": "Specific, verifiable criterion for invalid input or a failure, and the response", "verify": "the project's own test command for this criterion, or manual: steps"}
+      {"kind": "error", "text": "Specific, verifiable criterion for invalid input or a failure, and the response", "verify": "the project's own test command for this criterion, or manual: steps"},
+      {"kind": "happy", "text": "Typecheck and tests pass", "verify": "the project's typecheck command && its test command"}
     ],
     "priority": 2,
     "complexity": "S",
@@ -170,8 +171,8 @@ Every story has these 18 fields, in this order. The rules apply to the JSON and 
 | `title` | string | User voice |
 | `description` | string | "As a [user type], I want [goal] so that [benefit]." plus details |
 | `independentTest` | string | One sentence: how to prove this story works on its own, with its dependencies done and no later story |
-| `acceptanceCriteria` | array of `{kind, text, verify}` | `kind`: `happy` (expected path), `edge` (valid input at a boundary or unusual), `error` (invalid input or a failure, and what the system answers). At least one `happy`; a `feature` or `bug` also has at least one `edge` or `error` |
-| `verify` | string | A command that checks the criterion with the project's own tools (the test script found in `package.json`, `Makefile`, `pyproject.toml` etc., a CLI, an HTTP call), or `manual: <steps>` when no command can. Never a tool the project does not have; a test file the story itself creates is allowed. You write it; you never run it |
+| `acceptanceCriteria` | array of `{kind, text, verify}` | `kind`: `happy` (expected path), `edge` (valid input at a boundary or unusual), `error` (invalid input or a failure, and what the system answers). At least one `happy`, one `edge` and one `error` (a `spike` excepted), a minimum count by `complexity`, and `Typecheck and tests pass` as the last one: see [Acceptance criteria rules](#acceptance-criteria-rules) |
+| `verify` | string | A command that checks the criterion with the project's own tools (the test script found in `package.json`, `Makefile`, `pyproject.toml` etc., a CLI, an HTTP call), or `manual: <action>; <what you observe>` when no command can. Never a tool the project does not have; a test file the story itself creates is allowed. You write it; you never run it |
 | `priority` | integer | 1..N, each once, in execution order |
 | `complexity` | `XS` \| `S` \| `M` \| `L` | An `XL` story is broken down |
 | `dependencies` | array of `{id, reason}` | `id` of an earlier story in this plan (a smaller `priority` number); `reason` says what this story needs from it; `[]` when none |
@@ -185,6 +186,30 @@ Every story has these 18 fields, in this order. The rules apply to the JSON and 
 | `passes` | boolean | You always write `false`; the executor sets `true` only when every `verify` of the story passes |
 | `notes` | string | Technical notes or gotchas; `""` when there are none |
 
+### Acceptance criteria rules
+
+These rules apply to every story, in the JSON and the Gherkin formats alike. In Gherkin each `Scenario:` is one criterion: its tag is the `kind`, its `# Verify:` line is the `verify`, and its name and steps are the `text`.
+
+1. **Kinds.** Every story except a `spike` has at least one `happy`, one `edge` and one `error` criterion besides the quality gate (rule 4). A `spike`'s criteria are the questions it answers, with kind `happy`.
+2. **Minimum by complexity.** Not counting the quality gate, a story has at least this many criteria; a `spike` has at least 2, whatever its complexity. Write more when the story has more behavior to prove, never criteria that repeat one another.
+
+   | `complexity` | `XS` | `S` | `M` | `L` |
+   |---|---|---|---|---|
+   | Minimum criteria | 3 | 3 | 4 | 5 |
+
+3. **Observable and verifiable.** The `text` states a result someone can observe: a value, a status code, a message, a file, an exit code, a count; never an intention ("the code is maintainable"). The `verify` says how to check that result: a command narrow enough to fail when this criterion fails (a test name or filter, a CLI call, an HTTP call), or `manual: <action>; <what you observe>` when no command can, for example `manual: submit the sign-up form with an empty email; the field shows "Email is required"`.
+4. **Quality gate.** The last criterion of every story, `spike` included, and only the last, is `{"kind": "happy", "text": "Typecheck and tests pass", "verify": "<typecheck command> && <test command>"}`. Use the project's own commands: its scripts in `package.json`, `Makefile`, `pyproject.toml` and the like when they exist (`npm run typecheck && npm test`), else the CLI of a type checker the project already has (`npx tsc --noEmit && npm test`). A project with no type checker: `verify` is only the test command, and Assumptions says so. A project with no test command either: `verify` is `manual: <the build or start command> exits with code 0`, and Open Questions records that the project has no automated tests. Never add a tool the project does not have. The gate does not count toward the minimum of rule 2.
+5. **No vague words.** No criterion `text` (in Gherkin: no `Scenario:` name and no `Given`, `When`, `Then`, `And` or `But` step, `Background:` included) uses a word or phrase from these lists, matched as a whole word in any letter case. Replace it with the value it stands for. A word inside a code span or double quotes is a literal value (a header, a flag, an exact message) and does not count.
+
+- English vague words: `appropriate`, `appropriately`, `adequate`, `adequately`, `proper`, `properly`, `correctly`, `fast`, `quick`, `quickly`, `slow`, `efficient`, `efficiently`, `performant`, `scalable`, `robust`, `user-friendly`, `intuitive`, `easy`, `easily`, `simple`, `seamless`, `seamlessly`, `smooth`, `good`, `nice`, `basic`, `reasonable`, `sufficient`, `acceptable`, `optimal`, `optimized`, `gracefully`, `secure`, `securely`, `some`, `several`, `various`, `many`, `few`, `etc.`, `and so on`, `and more`, `as expected`, `as needed`, `if needed`, `if necessary`, `where applicable`
+- Portuguese vague words: `adequado`, `adequada`, `adequadamente`, `apropriado`, `apropriada`, `corretamente`, `rápido`, `rápida`, `rapidamente`, `lento`, `lenta`, `eficiente`, `eficientemente`, `robusto`, `robusta`, `intuitivo`, `intuitiva`, `fácil`, `facilmente`, `simples`, `bom`, `boa`, `razoável`, `suficiente`, `aceitável`, `ideal`, `otimizado`, `otimizada`, `seguro`, `segura`, `amigável`, `alguns`, `algumas`, `vários`, `várias`, `muitos`, `muitas`, `poucos`, `poucas`, `etc.`, `entre outros`, `conforme esperado`, `se necessário`, `quando aplicável`
+
+| Vague | Verifiable |
+|---|---|
+| Handles invalid input properly | A password under 8 characters returns 400 with the message "Password must have at least 8 characters" |
+| Search is fast | `GET /api/search?q=milk` answers in under 300 ms with 10,000 todos stored |
+| Accepts images, PDFs, etc. | Uploading a .png, .jpg or .pdf file returns 201; uploading a .exe file returns 415 |
+
 ### Schema v2 checklist
 
 Before you finish, check every story:
@@ -193,6 +218,10 @@ Before you finish, check every story:
 - [ ] Each criterion has `kind`, `text` and `verify`; there is at least one `happy`; each `feature` and `bug` has an `edge` or `error` (linted)
 - [ ] `priority` runs 1..N with no repeats (linted)
 - [ ] Each dependency points to an earlier story (a smaller `priority` number) and has a `reason` (linted)
+- [ ] Each story except a `spike` has a `happy`, an `edge` and an `error` criterion, and at least the minimum for its `complexity` (3 for `XS` and `S`, 4 for `M`, 5 for `L`); a `spike` has at least 2; the quality gate does not count
+- [ ] The last criterion of each story, and only the last, is `Typecheck and tests pass`, with the project's own commands in `verify`
+- [ ] Each criterion states an observable result, and its `verify` is a command or `manual: <action>; <what you observe>`
+- [ ] No criterion, `Scenario:` name or Gherkin step uses a word from the vague word lists
 - [ ] Each `consumes` item is produced by a dependency or exists in the code
 - [ ] Each `leverage` path exists (linted), and you read it
 - [ ] `filesToTouch` is empty only in a `spike`, and a `spike` is at most `M` (linted)
@@ -206,7 +235,7 @@ See [example-output.md](example-output.md) for a complete JSON example.
 
 ## Gherkin Format
 
-When `--format=gherkin` is specified, output Feature/Scenario blocks instead of JSON. Each user story becomes a Feature with a Scenario for each acceptance criterion; the [Schema v2 fields](#schema-v2-fields) rules and the [Schema v2 checklist](#schema-v2-checklist) apply unchanged. All Gherkin output must be in English regardless of input language. Keep every other section of the template (Context Summary, Clarifications, Assumptions, Open Questions, Implementation Notes, Definition of Done), and start the plan header with `**Format**: Gherkin (BDD)` followed by `**Schema**: v2`.
+When `--format=gherkin` is specified, output Feature/Scenario blocks instead of JSON. Each user story becomes a Feature with a Scenario for each acceptance criterion; the [Schema v2 fields](#schema-v2-fields) rules, the [Acceptance criteria rules](#acceptance-criteria-rules) and the [Schema v2 checklist](#schema-v2-checklist) apply unchanged. All Gherkin output must be in English regardless of input language. Keep every other section of the template (Context Summary, Clarifications, Assumptions, Open Questions, Implementation Notes, Definition of Done), and start the plan header with `**Format**: Gherkin (BDD)` followed by `**Schema**: v2`.
 
 Mapping:
 
@@ -216,6 +245,7 @@ Mapping:
 - `# Dependencies:` is `US-001 (reason)` items separated by `; `. `# Consumes:` and `# Produces:` separate items with `; `. `# Files:` (the `filesToTouch`), `# Leverage:` and `# Conflicts With:` separate items with `, `.
 - `title` becomes the `Feature:` line, and `description` the As a / I want / So that lines.
 - Each `Scenario:` is one criterion. The line right above it is its kind tag, `@happy`, `@edge` or `@error`, and the line above the tag is `# Verify: <check>`.
+- The quality gate is the last `Scenario:` of each Feature: `# Verify: <typecheck command> && <test command>`, then `@happy`, then `Scenario: Typecheck and tests pass`, as in the example below.
 
 ```gherkin
 # ID: US-002
@@ -252,6 +282,20 @@ Feature: User creates an item
     Given I am a user
     When I send POST /api/items without a name
     Then I receive 400 with a message about the name
+
+  # Verify: npm test -- items.create
+  @edge
+  Scenario: A one-character name is accepted
+    Given I am a user
+    When I send POST /api/items with the name "a"
+    Then I receive 201 with the created item
+
+  # Verify: npx tsc --noEmit && npm test
+  @happy
+  Scenario: Typecheck and tests pass
+    Given the story is implemented
+    When I run the typecheck and the full test suite
+    Then both finish with exit code 0
 ```
 
 See [example-gherkin-output.md](example-gherkin-output.md) for the complete template and a six-feature example.
