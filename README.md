@@ -17,7 +17,7 @@
 - **Recorded Assumptions** - Every plan lists the assumptions it made and the open questions left for later
 - **Atomic User Stories** - Breaks goals into 2-4 hour implementable chunks
 - **Dependency Ordering** - Stories ordered so earlier ones enable later ones
-- **Clear Acceptance Criteria** - Every story has verifiable completion criteria
+- **Clear Acceptance Criteria** - Every story has a happy-path, an edge and an error criterion (at least 3, 4 for M stories and 5 for L), each with a `verify` check, none with vague words like "fast" or "etc.", and ends with `Typecheck and tests pass`; see [Acceptance criteria rules](SKILL.md#acceptance-criteria-rules)
 - **Execution-Ready Stories** - Schema v2: each story has a type, an independent test, a `verify` check per criterion, dependencies with reasons, interfaces, files to reuse, and `parallel`/`conflictsWith` derived from the files it touches
 - **Dynamic File Naming** - Generates descriptive filenames based on your goal
 - **Multiple Output Formats** - Choose between JSON (default) or Gherkin (BDD)
@@ -178,7 +178,9 @@ The stories follow schema v2, ready for an executor: see [Schema v2 fields](SKIL
     "acceptanceCriteria": [
       {"kind": "happy", "text": "Valid payload returns 201 without password_hash", "verify": "npm test -- auth.register"},
       {"kind": "edge", "text": "Duplicate email returns 409", "verify": "npm test -- auth.register"},
-      {"kind": "error", "text": "Password under 8 chars returns 400 with message", "verify": "npm test -- auth.register"}
+      {"kind": "error", "text": "Password under 8 chars returns 400 with message", "verify": "npm test -- auth.register"},
+      {"kind": "error", "text": "Malformed email returns 400 with a message about the email", "verify": "npm test -- auth.register"},
+      {"kind": "happy", "text": "Typecheck and tests pass", "verify": "npx tsc --noEmit && npm test"}
     ],
     "priority": 2,
     "complexity": "M",
@@ -263,6 +265,21 @@ Feature: User registers with email and password
     When I submit a POST request to /api/auth/register
     Then I should receive a 409 status code
     And I should see an error message about email already in use
+
+  # Verify: npm test -- auth.register
+  @error
+  Scenario: Reject registration with invalid email
+    Given I provide an invalid email format
+    When I submit a POST request to /api/auth/register
+    Then I should receive a 400 status code
+    And I should see an error message about invalid email
+
+  # Verify: npx tsc --noEmit && npm test
+  @happy
+  Scenario: Typecheck and tests pass
+    Given the story is implemented
+    When I run the typecheck and the full test suite
+    Then both finish with exit code 0
 ```
 
 ## ✅ Plan Linter
@@ -276,7 +293,7 @@ The skill writes the plan to `.context/<slug>-plan.draft.md`, runs the linter on
 - **Plan**: the `**Schema**: v2` header (`header`), a non-empty `## Assumptions` and an `## Open Questions` section (`sections`), exactly one JSON stories block or at least one Gherkin Feature (`stories-block`), and the Gherkin Feature layout (`gherkin`)
 - **Fields**: all 18 fields, no unknown ones, in order (`fields`), with the right types and values (`field-type`)
 - **IDs and priorities**: `US-001` format (`id-format`), unique (`id-unique`), in sequence (`id-sequence`), priorities 1..N once each (`priority`)
-- **Acceptance criteria**: `{kind, text, verify}` (`criteria`), a `happy` one and an `edge`/`error` one for each feature and bug (`criteria-min`); spikes (`spike`)
+- **Acceptance criteria**: `{kind, text, verify}` (`criteria`), a `happy` one and an `edge`/`error` one for each feature and bug (`criteria-min`); spikes (`spike`). The stricter [acceptance criteria rules](SKILL.md#acceptance-criteria-rules) (all three kinds, the minimum by complexity, the `Typecheck and tests pass` gate, no vague words) are not linted: the skill checks them with its checklist, and `tests/test_examples.py` checks them in the examples
 - **Dependencies**: they exist (`dependency-missing`), come earlier (`dependency-order`), are not repeated (`dependency-duplicate`) and have no cycles (`dependency-cycle`)
 - **Parallel work**: `conflictsWith` equals the stories that share a file in `filesToTouch` (`conflicts`), and `parallel` follows it (`parallel`)
 - **Files**: paths are relative, without `..` (`path-outside`); each `leverage` path exists (`leverage-missing`); each `filesToTouch` path exists or its top-level directory does (`file-unanchored`)
@@ -371,6 +388,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Clarification protocol inspired by spec-kit's `/clarify`, Ralph's PRD skill, bobchao and superpowers
 - Schema v2 inspired by Ralph, Task Master, ccpm, cc-sdd, spec-workflow-mcp, superpowers and SprintiQ
 - Plan linter inspired by Mercadona, ccpm's validate.sh, OpenSpec validate and Task Master
+- Acceptance criteria rules inspired by BA Zone, OpenSpec, Ralph and claude-skills
 - Built following the [Agent Skills Standard](https://agentskills.io)
 - Compatible with Claude Code, OpenCode, Cursor, and any Agent Skills-compatible AI
 - Community-driven development
