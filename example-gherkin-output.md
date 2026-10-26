@@ -82,7 +82,7 @@ Feature: Create User model and database schema
   Scenario: Email validation is implemented
     Given the User model exists
     When I attempt to save a user with invalid email
-    Then validation should fail with appropriate error message
+    Then validation should fail with an error that names the email field
 
   # Verify: npm test -- user.model
   @happy
@@ -91,6 +91,20 @@ Feature: Create User model and database schema
     When I create a user with a plain text password
     Then bcryptjs should hash the password before saving
     And the database should only store the password_hash
+
+  # Verify: npm test -- user.model
+  @edge
+  Scenario: Lookup of an email with no stored user returns null
+    Given no user is stored with the email ghost@example.com
+    When I call User.findByEmail("ghost@example.com")
+    Then it should return null
+
+  # Verify: npx tsc --noEmit && npm test
+  @happy
+  Scenario: Typecheck and tests pass
+    Given the story is implemented
+    When I run the typecheck and the full test suite
+    Then both finish with exit code 0
 ```
 
 ---
@@ -165,6 +179,13 @@ Feature: User registers with email and password
     When I submit a POST request to /api/auth/register
     Then I should receive a 400 status code
     And I should see an error message about name being required
+
+  # Verify: npx tsc --noEmit && npm test
+  @happy
+  Scenario: Typecheck and tests pass
+    Given the story is implemented
+    When I run the typecheck and the full test suite
+    Then both finish with exit code 0
 ```
 
 ---
@@ -238,6 +259,20 @@ Feature: Configure JWT and create utilities
     When I check src/types/auth.d.ts
     Then JWT payload types should be defined
     And they should include userId and expiration
+
+  # Verify: npm test -- jwt
+  @edge
+  Scenario: Token one minute before expiration is still accepted
+    Given a token generated 23 hours and 59 minutes ago
+    When I call verifyToken(token)
+    Then it should return the decoded payload
+
+  # Verify: npx tsc --noEmit && npm test
+  @happy
+  Scenario: Typecheck and tests pass
+    Given the story is implemented
+    When I run the typecheck and the full test suite
+    Then both finish with exit code 0
 ```
 
 ---
@@ -277,7 +312,7 @@ Feature: Create login endpoint
     When I submit a POST request to /api/auth/login with correct email and password
     Then I should receive a 200 status code
     And I should receive a valid JWT token
-    And the response should include basic user data (id, email, name)
+    And the response should include the user's id, email and name
 
   # Verify: npm test -- auth.login
   @error
@@ -301,6 +336,21 @@ Feature: Create login endpoint
     Given a user with a hashed password
     When I submit login credentials
     Then bcrypt.compare should be used to verify the password
+
+  # Verify: npm test -- auth.login
+  @edge
+  Scenario: Consecutive logins each return a valid token
+    Given a registered user exists in the database
+    When I submit the same valid credentials to POST /api/auth/login twice
+    Then both responses should have a 200 status code
+    And verifyToken should accept both tokens
+
+  # Verify: npx tsc --noEmit && npm test
+  @happy
+  Scenario: Typecheck and tests pass
+    Given the story is implemented
+    When I run the typecheck and the full test suite
+    Then both finish with exit code 0
 ```
 
 ---
@@ -375,6 +425,13 @@ Feature: Create authentication middleware
     Given the authMiddleware is implemented
     When I check src/types/express.d.ts
     Then the Request type should be extended to include user property
+
+  # Verify: npx tsc --noEmit && npm test
+  @happy
+  Scenario: Typecheck and tests pass
+    Given the story is implemented
+    When I run the typecheck and the full test suite
+    Then both finish with exit code 0
 ```
 
 ---
@@ -422,6 +479,22 @@ Feature: Create user profile endpoint
     Given I am not authenticated
     When I send GET request to /api/users/me
     Then I should receive 401 Unauthorized
+
+  # Verify: npm test -- users.me
+  @edge
+  Scenario: A userId query parameter does not change whose profile is returned
+    Given I am an authenticated user
+    And another user exists
+    When I send GET request to /api/users/me?userId=<the other user's id>
+    Then I should receive 200 status code
+    And I should receive my own profile data, not the other user's
+
+  # Verify: npx tsc --noEmit && npm test
+  @happy
+  Scenario: Typecheck and tests pass
+    Given the story is implemented
+    When I run the typecheck and the full test suite
+    Then both finish with exit code 0
 ```
 
 ---

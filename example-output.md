@@ -42,7 +42,9 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
       {"kind": "happy", "text": "Migration generated and applied successfully", "verify": "npx prisma migrate status"},
       {"kind": "happy", "text": "TypeScript model created at /src/models/User.ts with instance methods", "verify": "npm test -- user.model"},
       {"kind": "error", "text": "Saving a user with an invalid email format fails validation", "verify": "npm test -- user.model"},
-      {"kind": "happy", "text": "Password stored as hash (bcryptjs)", "verify": "npm test -- user.model"}
+      {"kind": "happy", "text": "Password stored as hash (bcryptjs)", "verify": "npm test -- user.model"},
+      {"kind": "edge", "text": "User.findByEmail() returns null for an email with no stored user", "verify": "npm test -- user.model"},
+      {"kind": "happy", "text": "Typecheck and tests pass", "verify": "npx tsc --noEmit && npm test"}
     ],
     "priority": 1,
     "complexity": "S",
@@ -79,7 +81,9 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
     "acceptanceCriteria": [
       {"kind": "happy", "text": "Valid payload returns 201 without password_hash", "verify": "npm test -- auth.register"},
       {"kind": "edge", "text": "Duplicate email returns 409", "verify": "npm test -- auth.register"},
-      {"kind": "error", "text": "Password under 8 chars returns 400 with message", "verify": "npm test -- auth.register"}
+      {"kind": "error", "text": "Password under 8 chars returns 400 with message", "verify": "npm test -- auth.register"},
+      {"kind": "error", "text": "Malformed email returns 400 with a message about the email", "verify": "npm test -- auth.register"},
+      {"kind": "happy", "text": "Typecheck and tests pass", "verify": "npx tsc --noEmit && npm test"}
     ],
     "priority": 2,
     "complexity": "M",
@@ -124,7 +128,9 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
       {"kind": "happy", "text": "verifyToken(token) function returns decoded payload", "verify": "npm test -- jwt"},
       {"kind": "error", "text": "verifyToken(token) returns null for an expired or malformed token", "verify": "npm test -- jwt"},
       {"kind": "happy", "text": "Secret key loaded from JWT_SECRET environment variable", "verify": "npm test -- jwt"},
-      {"kind": "happy", "text": "TypeScript types defined for JWT payload", "verify": "npx tsc --noEmit"}
+      {"kind": "happy", "text": "TypeScript types defined for JWT payload", "verify": "npx tsc --noEmit"},
+      {"kind": "edge", "text": "verifyToken(token) returns the payload for a token issued 23 hours and 59 minutes earlier", "verify": "npm test -- jwt"},
+      {"kind": "happy", "text": "Typecheck and tests pass", "verify": "npx tsc --noEmit && npm test"}
     ],
     "priority": 3,
     "complexity": "S",
@@ -158,10 +164,12 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
     "description": "As a user, I want to login with email and password to receive an access token.",
     "independentTest": "POST /api/auth/login with a registered user's credentials returns 200 and a token that verifyToken accepts",
     "acceptanceCriteria": [
-      {"kind": "happy", "text": "POST /api/auth/login with valid credentials returns 200 with a JWT (userId in payload) and basic user data", "verify": "npm test -- auth.login"},
+      {"kind": "happy", "text": "POST /api/auth/login with valid credentials returns 200 with a JWT (userId in payload) and the user's id, email and name", "verify": "npm test -- auth.login"},
       {"kind": "error", "text": "Unknown email returns 401 with the same generic message 'Invalid credentials'", "verify": "npm test -- auth.login"},
       {"kind": "error", "text": "Wrong password returns 401 with the generic message 'Invalid credentials'", "verify": "npm test -- auth.login"},
-      {"kind": "happy", "text": "Password is compared with bcrypt.compare", "verify": "npm test -- auth.login"}
+      {"kind": "happy", "text": "Password is compared with bcrypt.compare", "verify": "npm test -- auth.login"},
+      {"kind": "edge", "text": "Two consecutive logins with the same credentials both return 200 with a token that verifyToken accepts", "verify": "npm test -- auth.login"},
+      {"kind": "happy", "text": "Typecheck and tests pass", "verify": "npx tsc --noEmit && npm test"}
     ],
     "priority": 4,
     "complexity": "M",
@@ -203,7 +211,8 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
       {"kind": "error", "text": "Returns 401 if token is missing", "verify": "npm test -- auth.middleware"},
       {"kind": "error", "text": "Returns 401 if token is invalid or expired", "verify": "npm test -- auth.middleware"},
       {"kind": "edge", "text": "Returns 404 if user not found (valid token but user deleted)", "verify": "npm test -- auth.middleware"},
-      {"kind": "happy", "text": "Request type extended to include user", "verify": "npx tsc --noEmit"}
+      {"kind": "happy", "text": "Request type extended to include user", "verify": "npx tsc --noEmit"},
+      {"kind": "happy", "text": "Typecheck and tests pass", "verify": "npx tsc --noEmit && npm test"}
     ],
     "priority": 5,
     "complexity": "M",
@@ -241,7 +250,9 @@ Node.js/Express project with TypeScript. Current stack includes PostgreSQL via P
     "independentTest": "GET /api/users/me with a valid token returns 200 with the user's id, email, name and created_at",
     "acceptanceCriteria": [
       {"kind": "happy", "text": "GET /api/users/me returns 200 with id, email, name, created_at and without password_hash", "verify": "npm test -- users.me"},
-      {"kind": "error", "text": "Returns 401 if not authenticated", "verify": "npm test -- users.me"}
+      {"kind": "error", "text": "Returns 401 if not authenticated", "verify": "npm test -- users.me"},
+      {"kind": "edge", "text": "GET /api/users/me?userId=<another user's id> returns the authenticated user's own profile", "verify": "npm test -- users.me"},
+      {"kind": "happy", "text": "Typecheck and tests pass", "verify": "npx tsc --noEmit && npm test"}
     ],
     "priority": 6,
     "complexity": "XS",

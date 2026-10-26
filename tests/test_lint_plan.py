@@ -37,6 +37,12 @@ def json_plan(mutate):
     return JSON_EXAMPLE[: m.start(1)] + json.dumps(stories, indent=2) + JSON_EXAMPLE[m.end(1):]
 
 
+def no_happy(story):
+    for c in story["acceptanceCriteria"]:
+        if c["kind"] == "happy":
+            c["kind"] = "edge"
+
+
 def run_cli(*args):
     return subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "lint_plan.py"), *args],
@@ -228,7 +234,7 @@ class StoryRuleTests(unittest.TestCase):
         self.assertIn("field-type", rules(probs))
 
     def test_no_happy(self):
-        probs = self.lint(lambda s: s[5]["acceptanceCriteria"][0].update(kind="edge"))
+        probs = self.lint(lambda s: no_happy(s[5]))
         p = [p for p in probs if p.rule == "criteria-min"]
         self.assertEqual([x.message for x in p], ["no 'happy' acceptance criterion"])
         self.assertEqual(p[0].story, "US-006")
@@ -236,7 +242,8 @@ class StoryRuleTests(unittest.TestCase):
     def test_feature_without_edge_or_error(self):
         def m(type_):
             def f(s):
-                s[5]["acceptanceCriteria"][1]["kind"] = "happy"
+                for c in s[5]["acceptanceCriteria"]:
+                    c["kind"] = "happy"
                 s[5]["type"] = type_
             return f
         self.assertIn("a feature needs at least one 'edge' or 'error' criterion",
@@ -265,7 +272,7 @@ class StoryRuleTests(unittest.TestCase):
         self.assertIn("field-type", rules(lint_text(text)))
 
     def test_problem_line_is_story_id_line(self):
-        text = json_plan(lambda s: s[5]["acceptanceCriteria"][0].update(kind="edge"))
+        text = json_plan(lambda s: no_happy(s[5]))
         p = [p for p in lint_text(text) if p.rule == "criteria-min"][0]
         self.assertEqual(p.line, line_containing(text, '    "id": "US-006"'))
 

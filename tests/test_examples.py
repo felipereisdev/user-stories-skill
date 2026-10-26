@@ -103,6 +103,41 @@ class AcceptanceCriteriaRuleTests(unittest.TestCase):
         self.assertEqual(vague_in('Cookie flag "Secure" is set', words), [])
         self.assertEqual(vague_in("Breakfast for someone", words), [])
 
+    def test_every_story_ends_with_the_quality_gate(self):
+        for name in EXAMPLES:
+            _, stories = load(name)
+            for sid, story in stories.items():
+                crits = story["acceptanceCriteria"]
+                with self.subTest(example=name, story=sid):
+                    self.assertEqual(crits[-1], GATE)
+                    self.assertEqual([c["text"] for c in crits].count(GATE["text"]), 1)
+
+    def test_every_story_has_all_kinds_and_its_minimum(self):
+        for name in EXAMPLES:
+            _, stories = load(name)
+            for sid, story in stories.items():
+                body = story["acceptanceCriteria"][:-1]
+                with self.subTest(example=name, story=sid):
+                    if story["type"] == "spike":
+                        self.assertGreaterEqual(len(body), 2)
+                    else:
+                        self.assertEqual({c["kind"] for c in body} & {"happy", "edge", "error"},
+                                         {"happy", "edge", "error"})
+                        self.assertGreaterEqual(len(body), MINIMUM[story["complexity"]])
+
+    def test_no_vague_words_in_criteria_or_steps(self):
+        words = vague_words()
+        for name in EXAMPLES:
+            text, stories = load(name)
+            for sid, story in stories.items():
+                for c in story["acceptanceCriteria"]:
+                    with self.subTest(example=name, story=sid, criterion=c["text"]):
+                        self.assertEqual(vague_in(c["text"], words), [])
+            for n, line in enumerate(text.splitlines(), 1):
+                if STEP.match(line):
+                    with self.subTest(example=name, line=n):
+                        self.assertEqual(vague_in(line, words), [])
+
 
 if __name__ == "__main__":
     unittest.main()
